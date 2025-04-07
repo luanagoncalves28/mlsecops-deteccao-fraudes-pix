@@ -1,2 +1,32 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Ignorar pasta de credenciais
+secrets/
+
+# Arquivos de credenciais JSON do Google
+*.json
+!package.json
+!package-lock.json
+
+# Arquivos de estado do Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Arquivos de log
+*.log
+
+# Arquivos de ambiente
+.env
+.env.*
+
+# Diretórios Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+ENV/
