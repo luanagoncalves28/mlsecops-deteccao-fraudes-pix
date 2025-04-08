@@ -1,0 +1,104 @@
+locals {
+  timestamp = formatdate("YYYYMMDDhhmmss", timestamp())
+  default_labels = {
+    managed-by = "terraform"
+    module     = "armazenamento"
+  }
+  merged_labels = merge(local.default_labels, var.labels)
+  bucket_names = {
+    bronze = "${var.project_id}-${var.environment}-bronze"
+    silver = "${var.project_id}-${var.environment}-silver"
+    gold   = "${var.project_id}-${var.environment}-gold"
+    models = "${var.project_id}-${var.environment}-models"
+    logs   = "${var.project_id}-${var.environment}-logs"
+  }
+}
+
+# Bucket Bronze - Dados brutos ingeridos
+resource "google_storage_bucket" "bronze" {
+  name                        = local.bucket_names.bronze
+  location                    = var.region
+  force_destroy               = var.environment != "producao"
+  uniform_bucket_level_access = true
+  versioning {
+    enabled = true
+  }
+  lifecycle_rule {
+    condition {
+      age = var.environment == "producao" ? 365 : 30
+    }
+    action {
+      type = "Delete"
+    }
+  }
+  labels = local.merged_labels
+}
+
+# Bucket Silver - Dados processados e validados
+resource "google_storage_bucket" "silver" {
+  name                        = local.bucket_names.silver
+  location                    = var.region
+  force_destroy               = var.environment != "producao"
+  uniform_bucket_level_access = true
+  versioning {
+    enabled = true
+  }
+  lifecycle_rule {
+    condition {
+      age = var.environment == "producao" ? 180 : 15
+    }
+    action {
+      type = "Delete"
+    }
+  }
+  labels = local.merged_labels
+}
+
+# Bucket Gold - Dados agregados prontos para consumo
+resource "google_storage_bucket" "gold" {
+  name                        = local.bucket_names.gold
+  location                    = var.region
+  force_destroy               = var.environment != "producao"
+  uniform_bucket_level_access = true
+  versioning {
+    enabled = true
+  }
+  lifecycle_rule {
+    condition {
+      age = var.environment == "producao" ? 90 : 7
+    }
+    action {
+      type = "Delete"
+    }
+  }
+  labels = local.merged_labels
+}
+
+# Bucket para armazenar modelos de ML
+resource "google_storage_bucket" "models" {
+  name                        = local.bucket_names.models
+  location                    = var.region
+  force_destroy               = var.environment != "producao"
+  uniform_bucket_level_access = true
+  versioning {
+    enabled = true
+  }
+  labels = local.merged_labels
+}
+
+# Bucket para armazenar logs de aplicação
+resource "google_storage_bucket" "logs" {
+  name                        = local.bucket_names.logs
+  location                    = var.region
+  force_destroy               = var.environment != "producao"
+  uniform_bucket_level_access = true
+  lifecycle_rule {
+    condition {
+      age = var.environment == "producao" ? 365 : 30
+    }
+    action {
+      type = "Delete"
+    }
+  }
+  labels = local.merged_labels
+}

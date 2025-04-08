@@ -1,0 +1,29 @@
+output "bronze_bucket" {
+  description = "Nome do bucket da camada Bronze"
+  value       = google_storage_bucket.bronze.name
+}
+
+output "silver_bucket" {
+  description = "Nome do bucket da camada Silver"
+  value       = google_storage_bucket.silver.name
+}
+
+output "gold_bucket" {
+  description = "Nome do bucket da camada Gold"
+  value       = google_storage_bucket.gold.name
+}
+
+output "models_bucket" {
+  description = "Nome do bucket de modelos"
+  value       = google_storage_bucket.models.name
+}
+
+output "logs_bucket" {
+  description = "Nome do bucket de logs"
+  value       = google_storage_bucket.logs.name
+}
+
+output "bucket_names" {
+  description = "Mapa com todos os nomes de buckets"
+  value       = local.bucket_names
+}
