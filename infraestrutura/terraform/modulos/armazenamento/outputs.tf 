@@ -1,29 +1,21 @@
-output "bronze_bucket" {
-  description = "Nome do bucket da camada Bronze"
-  value       = google_storage_bucket.bronze.name
-}
-
-output "silver_bucket" {
-  description = "Nome do bucket da camada Silver"
-  value       = google_storage_bucket.silver.name
-}
-
-output "gold_bucket" {
-  description = "Nome do bucket da camada Gold"
-  value       = google_storage_bucket.gold.name
-}
-
-output "models_bucket" {
-  description = "Nome do bucket de modelos"
-  value       = google_storage_bucket.models.name
-}
-
-output "logs_bucket" {
-  description = "Nome do bucket de logs"
-  value       = google_storage_bucket.logs.name
-}
+# Módulo de Armazenamento - outputs.tf
+# Autor: Luana Gonçalves
+# Data: Abril 2025
 
 output "bucket_names" {
-  description = "Mapa com todos os nomes de buckets"
-  value       = local.bucket_names
+  description = "Nomes dos buckets criados"
+  value = {
+    data   = google_storage_bucket.data_bucket.name
+    models = google_storage_bucket.models_bucket.name
+    temp   = google_storage_bucket.temp_bucket.name
+  }
+}
+
+output "bucket_urls" {
+  description = "URLs dos buckets criados"
+  value = {
+    data   = "gs://${google_storage_bucket.data_bucket.name}"
+    models = "gs://${google_storage_bucket.models_bucket.name}" 
+    temp   = "gs://${google_storage_bucket.temp_bucket.name}"
+  }
 }

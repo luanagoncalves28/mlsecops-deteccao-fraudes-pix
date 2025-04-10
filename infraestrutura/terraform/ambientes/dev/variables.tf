@@ -1,7 +1,10 @@
+# Ambiente de Desenvolvimento - variables.tf
+# Autor: Luana Gonçalves
+# Data: Abril 2025
+
 variable "project_id" {
   description = "ID do projeto GCP"
   type        = string
-  default     = "forward-walker-456015"
 }
 
 variable "region" {
@@ -10,14 +13,20 @@ variable "region" {
   default     = "us-central1"
 }
 
+variable "zone" {
+  description = "Zona principal para recursos do GCP"
+  type        = string
+  default     = "us-central1-a"
+}
+
+variable "environment" {
+  description = "Ambiente (dev, homologacao, producao)"
+  type        = string
+  default     = "dev"
+}
+
 variable "labels" {
   description = "Labels a serem aplicados aos recursos"
   type        = map(string)
-  default = {
-    ambiente    = "desenvolvimento"
-    aplicacao   = "deteccao-fraudes-pix"
-    gerenciado  = "terraform"
-    projeto     = "mlsecops-deteccao-fraudes-pix"
-    responsavel = "luana-goncalves"
-  }
+  default     = {}
 }

@@ -1,0 +1,11 @@
+# Manifest do Kubernetes - namespace.yaml
+# Autor: Luana Gonçalves
+# Data: Abril 2025
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mlsecops-fraud-detection
+  labels:
+    app: fraud-detection
+    environment: dev

@@ -1,0 +1,113 @@
+# Default values for inference-service
+replicaCount: 2
+
+image:
+  repository: gcr.io/mlsecops-deteccao-fraudes-pix/inference-service
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext:
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop:
+    - ALL
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+
+resources:
+  limits:
+    cpu: 2
+    memory: 4Gi
+  requests:
+    cpu: 1
+    memory: 2Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+env:
+  - name: LOG_LEVEL
+    value: "info"
+  - name: FEATURE_STORE_URL
+    valueFrom:
+      configMapKeyRef:
+        name: inference-service-config
+        key: feature_store_url
+  - name: MODEL_REGISTRY_URL
+    valueFrom:
+      configMapKeyRef:
+        name: inference-service-config
+        key: model_registry_url
+  - name: DEFAULT_MODEL_VERSION
+    valueFrom:
+      configMapKeyRef:
+        name: inference-service-config
+        key: default_model_version
+
+configMaps:
+  inference-service-config:
+    feature_store_url: "http://feature-store-service:8080"
+    model_registry_url: "http://model-registry-service:8080"
+    default_model_version: "v1.0.0"
+    enable_model_caching: "true"
+    model_cache_ttl_seconds: "3600"
+    max_batch_size: "64"
+
+secrets:
+  inference-service-secrets:
+    enabled: true
+    data:
+      mlflow_tracking_token: ""  # To be filled in environment-specific values
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 60
+  periodSeconds: 15
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+ingress:
+  enabled: false
+
+volumeMounts:
+  - name: model-cache
+    mountPath: /app/model-cache
+
+volumes:
+  - name: model-cache
+    emptyDir:
+      sizeLimit: 2Gi

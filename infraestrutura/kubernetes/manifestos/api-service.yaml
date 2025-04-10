@@ -1,0 +1,22 @@
+# Manifest do Kubernetes - api-service.yaml
+# Autor: Luana Gonçalves
+# Data: Abril 2025
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-service
+  namespace: mlsecops-fraud-detection
+  labels:
+    app: fraud-detection
+    component: api
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: fraud-detection
+    component: api

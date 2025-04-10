@@ -1,3 +1,7 @@
+# Módulo de Armazenamento - variables.tf
+# Autor: Luana Gonçalves
+# Data: Abril 2025
+
 variable "project_id" {
   description = "ID do projeto GCP"
   type        = string
@@ -11,11 +15,9 @@ variable "region" {
 variable "environment" {
   description = "Ambiente (dev, homologacao, producao)"
   type        = string
-  default     = "dev"
 }
 
 variable "labels" {
   description = "Labels a serem aplicados aos recursos"
   type        = map(string)
-  default     = {}
 }

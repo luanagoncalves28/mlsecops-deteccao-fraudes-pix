@@ -1,0 +1,60 @@
+# Manifest do Kubernetes - inference-deployment.yaml
+# Autor: Luana Gonçalves
+# Data: Abril 2025
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inference-service
+  namespace: mlsecops-fraud-detection
+  labels:
+    app: fraud-detection
+    component: inference
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fraud-detection
+      component: inference
+  template:
+    metadata:
+      labels:
+        app: fraud-detection
+        component: inference
+    spec:
+      containers:
+      - name: inference-container
+        image: gcr.io/PROJECT_ID/mlsecops-fraud-inference:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            cpu: "200m"
+            memory: "512Mi"
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 15
+        env:
+        - name: ENVIRONMENT
+          value: "dev"
+        - name: MODEL_PATH
+          value: "/models/fraud-detection"
+        volumeMounts:
+        - name: model-volume
+          mountPath: /models
+      volumes:
+      - name: model-volume
+        emptyDir: {}

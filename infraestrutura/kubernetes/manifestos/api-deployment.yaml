@@ -1,0 +1,54 @@
+# Manifest do Kubernetes - api-deployment.yaml
+# Autor: Luana Gonçalves
+# Data: Abril 2025
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-service
+  namespace: mlsecops-fraud-detection
+  labels:
+    app: fraud-detection
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: fraud-detection
+      component: api
+  template:
+    metadata:
+      labels:
+        app: fraud-detection
+        component: api
+    spec:
+      containers:
+      - name: api-container
+        image: gcr.io/PROJECT_ID/mlsecops-fraud-api:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        env:
+        - name: ENVIRONMENT
+          value: "dev"
+        - name: MODEL_SERVICE_URL
+          value: "http://inference-service:8080"
