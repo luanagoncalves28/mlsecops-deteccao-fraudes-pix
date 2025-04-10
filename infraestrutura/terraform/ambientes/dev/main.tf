@@ -75,7 +75,7 @@ resource "google_project_service" "gcp_services" {
 
 # Módulo de rede
 module "rede" {
-  source      = "../../../modulos/rede"
+  source      = "../../modulos/rede"
   project_id  = local.project_id
   region      = local.region
   environment = local.environment
@@ -86,7 +86,7 @@ module "rede" {
 
 # Módulo de armazenamento
 module "armazenamento" {
-  source      = "../../../modulos/armazenamento"
+  source      = "../../modulos/armazenamento"
   project_id  = local.project_id
   region      = local.region
   environment = local.environment
@@ -97,7 +97,7 @@ module "armazenamento" {
 
 # Módulo GKE
 module "gke" {
-  source          = "../../../modulos/gke"
+  source          = "../../modulos/gke"
   project_id      = local.project_id
   region          = local.region
   zone            = local.zone
