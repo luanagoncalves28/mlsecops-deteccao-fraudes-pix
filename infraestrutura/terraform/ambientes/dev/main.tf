@@ -1,14 +1,7 @@
-# Ambiente de Desenvolvimento - main.tf
+# Configuração principal para ambiente de desenvolvimento
 # Autor: Luana Gonçalves
 # Data: Abril 2025
-
 terraform {
-  required_version = ">= 1.5.0"
-  
-  backend "local" {
-    path = "terraform.tfstate"
-  }
-  
   required_providers {
     google = {
       source  = "hashicorp/google"
@@ -21,95 +14,78 @@ terraform {
   }
 }
 
-# Variáveis locais
-locals {
-  project_id  = var.project_id
-  region      = var.region
-  zone        = var.zone
-  environment = var.environment
-  labels      = var.labels
-}
-
-# Configurações dos provedores
 provider "google" {
-  project = local.project_id
-  region  = local.region
-  zone    = local.zone
+  project = var.project_id
+  region  = var.region
 }
 
 provider "google-beta" {
-  project = local.project_id
-  region  = local.region
-  zone    = local.zone
+  project = var.project_id
+  region  = var.region
 }
 
-# Ativar APIs necessárias
+# Habilitação de serviços necessários
 resource "google_project_service" "gcp_services" {
   for_each = toset([
     "compute.googleapis.com",
     "container.googleapis.com",
-    "artifactregistry.googleapis.com",
-    "cloudbuild.googleapis.com",
-    "monitoring.googleapis.com",
     "logging.googleapis.com",
-    "cloudtrace.googleapis.com",
-    "aiplatform.googleapis.com",
-    "bigquery.googleapis.com",
+    "monitoring.googleapis.com",
     "storage.googleapis.com",
     "pubsub.googleapis.com",
     "run.googleapis.com",
-    "secretmanager.googleapis.com"
+    "secretmanager.googleapis.com",
+    "cloudbuild.googleapis.com",
+    "cloudtrace.googleapis.com",
+    "artifactregistry.googleapis.com",
+    "aiplatform.googleapis.com",
+    "bigquery.googleapis.com"
   ])
   
-  project = local.project_id
-  service = each.key
-  
+  project                    = var.project_id
+  service                    = each.key
   disable_dependent_services = false
   disable_on_destroy         = false
-  
+
   timeouts {
     create = "30m"
     update = "40m"
   }
 }
 
-# Módulo de rede
 module "rede" {
-  source      = "../../modulos/rede"
-  project_id  = local.project_id
-  region      = local.region
-  environment = local.environment
-  labels      = local.labels
+  source = "../../modulos/rede"
   
-  depends_on = [google_project_service.gcp_services]
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
+  labels      = var.labels
 }
 
-# Módulo de armazenamento
-module "armazenamento" {
-  source      = "../../modulos/armazenamento"
-  project_id  = local.project_id
-  region      = local.region
-  environment = local.environment
-  labels      = local.labels
-  
-  depends_on = [google_project_service.gcp_services]
-}
-
-# Módulo GKE
 module "gke" {
-  source          = "../../modulos/gke"
-  project_id      = local.project_id
-  region          = local.region
-  zone            = local.zone
-  environment     = local.environment
-  labels          = local.labels
-  network_name    = module.rede.vpc_name
-  subnetwork_name = module.rede.subnet_name
-  gke_num_nodes   = 1
-  machine_type    = "e2-standard-2"
+  source = "../../modulos/gke"
   
-  depends_on = [
-    google_project_service.gcp_services,
-    module.rede
-  ]
+  project_id       = var.project_id
+  region           = var.region  # Este parâmetro estava faltando
+  zone             = var.zone
+  environment      = var.environment
+  labels           = var.labels
+  network_name     = "mlsecops-vpc-dev"  # Este parâmetro estava faltando
+  subnetwork_name  = "mlsecops-subnet-dev"
+  machine_type     = var.machine_type
+  gke_num_nodes    = var.min_node_count  # Usando min_node_count como valor para gke_num_nodes
+  
+  # Dependência do módulo de rede
+  depends_on = [module.rede, google_project_service.gcp_services]
+}
+
+module "armazenamento" {
+  source = "../../modulos/armazenamento"
+  
+  project_id  = var.project_id
+  region      = var.region
+  environment = var.environment
+  labels      = var.labels
+  
+  depends_on = [google_project_service.gcp_services]
 }
