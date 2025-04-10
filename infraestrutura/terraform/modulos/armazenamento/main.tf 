@@ -2,13 +2,16 @@
 # Autor: Luana Gonçalves
 # Data: Abril 2025
 
-# Bucket para dados do projeto
-resource "google_storage_bucket" "data_bucket" {
-  name          = "mlsecops-dados-${var.project_id}-${var.environment}"
+# Buckets para armazenamento de dados
+resource "google_storage_bucket" "buckets" {
+  count = 3
+  
+  name          = "mlsecops-pix-${var.environment}-${count.index}"
   location      = var.region
   storage_class = "STANDARD"
   
   uniform_bucket_level_access = true
+  force_destroy               = true
   
   versioning {
     enabled = true
@@ -26,37 +29,13 @@ resource "google_storage_bucket" "data_bucket" {
   labels = var.labels
 }
 
-# Bucket para modelos de ML
-resource "google_storage_bucket" "models_bucket" {
-  name          = "mlsecops-modelos-${var.project_id}-${var.environment}"
-  location      = var.region
-  storage_class = "STANDARD"
+# Configuração de IAM para os buckets
+resource "google_storage_bucket_iam_binding" "bucket_iam" {
+  count  = length(google_storage_bucket.buckets)
+  bucket = google_storage_bucket.buckets[count.index].name
+  role   = "roles/storage.objectViewer"
   
-  uniform_bucket_level_access = true
-  
-  versioning {
-    enabled = true
-  }
-  
-  labels = var.labels
-}
-
-# Bucket para arquivos temporários do processamento
-resource "google_storage_bucket" "temp_bucket" {
-  name          = "mlsecops-temp-${var.project_id}-${var.environment}"
-  location      = var.region
-  storage_class = "STANDARD"
-  
-  uniform_bucket_level_access = true
-  
-  lifecycle_rule {
-    condition {
-      age = 7
-    }
-    action {
-      type = "Delete"
-    }
-  }
-  
-  labels = var.labels
+  members = [
+    "serviceAccount:${var.project_id}@appspot.gserviceaccount.com",
+  ]
 }

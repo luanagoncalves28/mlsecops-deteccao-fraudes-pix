@@ -8,7 +8,7 @@ variable "project_id" {
 }
 
 variable "region" {
-  description = "Região principal para recursos do GCP"
+  description = "Região do GCP para armazenamento"
   type        = string
 }
 
@@ -20,4 +20,5 @@ variable "environment" {
 variable "labels" {
   description = "Labels a serem aplicados aos recursos"
   type        = map(string)
+  default     = {}
 }

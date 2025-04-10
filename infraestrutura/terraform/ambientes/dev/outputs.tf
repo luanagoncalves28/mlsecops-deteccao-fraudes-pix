@@ -21,12 +21,12 @@ output "environment" {
 # Informações de armazenamento
 output "storage_buckets" {
   description = "Nomes dos buckets criados"
-  value       = module.armazenamento.bucket_names
+  value       = module.armazenamento.buckets
 }
 
 output "storage_urls" {
   description = "URLs dos buckets criados"
-  value       = module.armazenamento.bucket_urls
+  value       = module.armazenamento.urls
 }
 
 # Informações de rede
