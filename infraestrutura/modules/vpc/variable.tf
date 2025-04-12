@@ -1,113 +1,79 @@
 ############################################################
 # FILE: variables.tf
-# FOLDER: mlsecpix-infra/modules/databricks-jobs/
+# FOLDER: mlsecpix-infra/modules/vpc/
 # DESCRIPTION:
-#   Define as variáveis necessárias para criar e gerenciar 
-#   um cluster, notebooks e um job no Databricks, focando
-#   em um pipeline de detecção de fraudes Pix (MLSecPix).
-#   Este arquivo complementa o main.tf e segue Clean Code
-#   e MLSecOps: cada parâmetro é configurável e não 
-#   hardcoded, garantindo segurança, rastreabilidade e 
-#   adequação às fases 1, 2 e 3 do projeto.
+#   Declara todas as variáveis necessárias para provisionar
+#   a rede VPC do projeto MLSecPix (fictício). Antes, 
+#   no main.tf do módulo, esses blocos de variáveis 
+#   estavam inline; agora, separamos em variables.tf 
+#   para seguir ainda mais as boas práticas de Clean Code.
+#
+#   Em um ambiente real, usaríamos esse arquivo para
+#   manter a clareza de quais parâmetros o módulo VPC 
+#   espera, reduzindo a chance de erros e mantendo 
+#   cada arquivo focado em uma responsabilidade.
 ############################################################
 
 ############################################################
-# AMBIENTE (DEV, STAGING, PROD)
-#   Pode ser usado para rotular recursos no Databricks 
-#   (ex.: "dev", "mlsecpix") e gerar tags que auxiliam 
-#   na auditoria e conformidade com BCB nº 403.
+# GCP PROJECT
+#   Identifica o projeto onde os recursos de rede
+#   (VPC, sub-rede, firewall) serão criados.
 ############################################################
-variable "environment" {
+variable "project_id" {
   type        = string
-  description = "Nome do ambiente (dev, staging, prod)."
-  default     = "dev"
+  description = "ID do projeto GCP onde a VPC será criada."
 }
 
 ############################################################
-# BASE DO WORKSPACE (DIRETÓRIO)
-#   Onde os notebooks serão importados. Exemplo:
-#   "/Users/lugonc.lga@gmail.com/mlsecops-deteccao-fraudes-pix"
+# REGIÃO GCP
+#   Região padrão a ser utilizada para sub-redes e 
+#   recursos regionais (ex.: 'southamerica-east1').
 ############################################################
-variable "workspace_base_dir" {
+variable "region" {
   type        = string
-  description = "Diretório base onde os notebooks serão importados no Databricks."
-  default     = "/Users/lugonc.lga@gmail.com/mlsecops-deteccao-fraudes-pix"
+  description = "Região principal do GCP."
 }
 
 ############################################################
-# CLUSTER SETTINGS
-#   Parâmetros para criar um cluster dedicado (caso não 
-#   usemos 'existing_cluster_id'). Em produção, pode 
-#   haver configurações extras como Spark config, 
-#   autoscaling, ACLs, etc.
+# NOME DA VPC
+#   Por padrão, definimos 'mlsecpix-vpc', mas pode ser 
+#   sobrescrito quando o módulo for chamado.
 ############################################################
-variable "cluster_name" {
+variable "vpc_name" {
   type        = string
-  description = "Nome do cluster Databricks."
-  default     = "mlsecpix-job-cluster"
-}
-
-variable "spark_version" {
-  type        = string
-  description = "Versão do Spark no Databricks (ex.: 11.3.x-scala2.12)."
-  default     = "11.3.x-scala2.12"
-}
-
-variable "node_type_id" {
-  type        = string
-  description = "Tipo de nó (ex.: 'Standard_DS3_v2', 'i3.xlarge')."
-  default     = "i3.xlarge"
-}
-
-variable "autotermination_minutes" {
-  type        = number
-  description = "Tempo em minutos para encerrar cluster ocioso (MLSecOps: poupar custo)."
-  default     = 30
-}
-
-variable "num_workers" {
-  type        = number
-  description = "Número de workers do cluster."
-  default     = 2
+  description = "Nome desejado para a rede VPC."
+  default     = "mlsecpix-vpc"
 }
 
 ############################################################
-# NOTEBOOKS
-#   Se quisermos parametrizar caminhos ou nomes de 
-#   notebooks, poderíamos definir aqui. Mas no 
-#   'main.tf' exemplificamos 'bronze_to_silver.py'.
-#   Caso queira ser dinâmico, criar variáveis. 
-#   Ex.: var.bronze_notebook_filename, var.silver_notebook_filename.
+# NOME DA SUB-REDE
+#   Sub-rede principal usada para rodar workloads
+#   (ex.: GKE, Databricks no caso de peering, etc.).
 ############################################################
-# (Opcional) - Se for parametrizar, podemos:
-# variable "bronze_notebook_file" {
-#   type        = string
-#   description = "Caminho do notebook local para Bronze->Silver."
-#   default     = "../notebooks/bronze_to_silver.py"
-# }
-
-############################################################
-# JOB CONFIG
-#   Nome do job, schedule (cron), owner, etc. 
-#   Em um projeto MLSecOps real, definimos triggers 
-#   automáticos, e logs de auditoria do job.
-############################################################
-variable "job_name" {
+variable "subnet_name" {
   type        = string
-  description = "Nome do job Databricks que orquestra notebooks."
-  default     = "mlsecpix-pipeline"
+  description = "Nome desejado para a sub-rede."
+  default     = "mlsecpix-subnet"
 }
 
-variable "job_cron" {
+############################################################
+# CIDR DA SUB-REDE
+#   Intervalo de IPs disponível (ex.: 10.0.0.0/16).
+############################################################
+variable "cidr_subnet" {
   type        = string
-  description = "Expressão CRON para agendar o job (ex.: 0 2 * * * ?)."
-  default     = "0 3 * * * ?" 
-  # 3h da manhã todos os dias 
-  # Ajuste conforme necessidade
+  description = "CIDR da sub-rede (ex.: 10.0.0.0/16)."
+  default     = "10.0.0.0/16"
 }
 
-variable "job_owner" {
-  type        = string
-  description = "Tag que indica o responsável pelo job."
-  default     = "mlsecops-team"
+############################################################
+# FLOW LOGS
+#   Indica se deve habilitar Flow Logs na sub-rede.
+#   Flow Logs geram metadados de tráfego para auditoria,
+#   crucial em MLSecOps e compliance (BCB nº 403).
+############################################################
+variable "enable_flow_logs" {
+  type        = bool
+  description = "Habilitar ou não Flow Logs para auditoria."
+  default     = true
 }
