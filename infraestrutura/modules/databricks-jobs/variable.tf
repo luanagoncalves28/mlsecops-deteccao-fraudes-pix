@@ -2,83 +2,118 @@
 # FILE: variables.tf
 # FOLDER: mlsecpix-infra/modules/databricks-jobs/
 # DESCRIPTION:
-#   Declara as variáveis necessárias para configurar os
-#   recursos do Databricks Jobs para o projeto MLSecPix.
-#
-#   Esse arquivo define parâmetros essenciais para:
-#     - Identificar o ambiente de execução (dev, staging, prod)
-#     - Localizar o diretório base do Databricks, onde os 
-#       notebooks serão armazenados
-#     - Configurar o cluster dedicado que executará os jobs,
-#       incluindo nome, versão do Spark, tipo de nó, número de
-#       workers e tempo de autoencerramento
-#     - Configurar o job que orquestra a execução dos 
-#       notebooks (ex.: transformação de dados entre as 
-#       camadas Bronze, Silver e Gold)
-#
-#   Essa abordagem atende os requisitos das fases 1, 2 e 3 do
-#   projeto (Análise Regulatória, Tradução para Requisitos 
-#   Técnicos e Design Arquitetural) e segue princípios de Clean 
-#   Code e MLSecOps, garantindo modularidade, segurança e 
-#   rastreabilidade para auditoria e compliance.
+# Define as variáveis necessárias para criar e gerenciar
+# um cluster, notebooks e um job no Databricks, focando
+# em um pipeline de detecção de fraudes Pix (MLSecPix).
+# Este arquivo complementa o main.tf e segue Clean Code
+# e MLSecOps: cada parâmetro é configurável e não
+# hardcoded, garantindo segurança, rastreabilidade e
+# adequação às fases 1, 2 e 3 do projeto.
+############################################################
+
+############################################################
+# AMBIENTE (DEV, STAGING, PROD)
+# Pode ser usado para rotular recursos no Databricks
+# (ex.: "dev", "mlsecpix") e gerar tags que auxiliam
+# na auditoria e conformidade com BCB nº 403.
 ############################################################
 
 variable "environment" {
   type        = string
-  description = "Nome do ambiente para a execução (dev, staging, prod)."
+  description = "Nome do ambiente (dev, staging, prod)."
   default     = "dev"
 }
 
+############################################################
+# BASE DO WORKSPACE (DIRETÓRIO)
+# Onde os notebooks serão importados. Exemplo:
+# "/Users/lugonc.lga@gmail.com/mlsecops-deteccao-fraudes-pix"
+############################################################
+
 variable "workspace_base_dir" {
   type        = string
-  description = "Diretório base no Databricks onde os notebooks serão importados (ex.: /Users/lugonc.lga@gmail.com/mlsecops-deteccao-fraudes-pix)."
+  description = "Diretório base onde os notebooks serão importados no Databricks."
   default     = "/Users/lugonc.lga@gmail.com/mlsecops-deteccao-fraudes-pix"
 }
 
+############################################################
+# CLUSTER SETTINGS
+# Parâmetros para criar um cluster dedicado (caso não
+# usemos 'existing_cluster_id'). Em produção, pode
+# haver configurações extras como Spark config,
+# autoscaling, ACLs, etc.
+############################################################
+
 variable "cluster_name" {
   type        = string
-  description = "Nome do cluster Databricks que executará os jobs de ML/ETL."
+  description = "Nome do cluster Databricks."
   default     = "mlsecpix-job-cluster"
 }
 
 variable "spark_version" {
   type        = string
-  description = "Versão do Spark a ser utilizada no cluster (ex.: 11.3.x-scala2.12)."
+  description = "Versão do Spark no Databricks (ex.: 11.3.x-scala2.12)."
   default     = "11.3.x-scala2.12"
 }
 
 variable "node_type_id" {
   type        = string
-  description = "Tipo de nó para os workers do cluster (ex.: i3.xlarge)."
+  description = "Tipo de nó (ex.: 'Standard_DS3_v2', 'i3.xlarge')."
   default     = "i3.xlarge"
 }
 
 variable "autotermination_minutes" {
   type        = number
-  description = "Tempo de autoencerramento do cluster em minutos (para reduzir custos em ambiente dev)."
+  description = "Tempo em minutos para encerrar cluster ocioso (MLSecOps: poupar custo)."
   default     = 30
 }
 
 variable "num_workers" {
   type        = number
-  description = "Número de workers (nós) para o cluster Databricks."
+  description = "Número de workers do cluster."
   default     = 2
 }
 
+############################################################
+# JOB CONFIG
+# Nome do job, schedule (cron), owner, etc.
+# Em um projeto MLSecOps real, definimos triggers
+# automáticos, e logs de auditoria do job.
+############################################################
+
 variable "job_name" {
   type        = string
-  description = "Nome do job Databricks que orquestra os notebooks de transformação (pipeline MLSecPix)."
+  description = "Nome do job Databricks que orquestra notebooks."
   default     = "mlsecpix-pipeline"
 }
 
 variable "job_cron" {
   type        = string
-  description = "Expressão CRON para agendamento do job (ex.: '0 3 * * * ?' para executar às 3h da manhã diariamente)."
+  description = "Expressão CRON para agendar o job (ex.: 0 2 * * * ?)."
   default     = "0 3 * * * ?"
+  # 3h da manhã todos os dias
+  # Ajuste conforme necessidade
 }
 
 variable "job_owner" {
   type        = string
-  description = "Identificador ou nome do proprietário do job, usado para tags e auditoria."
+  description = "Tag que indica o responsável pelo job."
   default     = "mlsecops-team"
+}
+
+############################################################
+# DATABRICKS CONNECTION
+# Informações de conexão com o Databricks.
+# Estas variáveis são injetadas do módulo raiz.
+############################################################
+
+variable "databricks_host" {
+  type        = string
+  description = "URL do workspace Databricks."
+}
+
+variable "databricks_token" {
+  type        = string
+  description = "Token de acesso ao Databricks."
+  sensitive   = true
 }
