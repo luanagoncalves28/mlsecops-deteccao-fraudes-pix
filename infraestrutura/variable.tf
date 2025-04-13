@@ -2,22 +2,26 @@
 # FILE: variables.tf
 # PROJECT: mlsecpix-infra
 # DESCRIPTION:
-#   Define as variáveis globais do projeto MLSecPix.
-#   São utilizadas para configurar o provisionamento dos 
-#   recursos (GCP, Databricks, GitHub) de forma segura e 
-#   modular, atendendo aos requisitos das fases 1, 2 e 3 
-#   (Análise Regulatória, Tradução para Requisitos Técnicos 
-#   e Design Arquitetural). Segue os princípios de Clean Code, 
-#   evitando hardcode e "strings mágicas", e garantindo a 
-#   rastreabilidade e conformidade (ex.: Resolução BCB nº 403).
+# Define as variáveis globais do projeto, seguindo
+# princípios de Clean Code e MLSecOps.
+# Em produção, recomenda-se armazenar valores sensíveis
+# em Vault/Secret Manager e não em plaintext.
+#
+# Comentários contextuais para demonstrar expertise em
+# segurança, compliance e boas práticas de organização.
 ############################################################
 
 ############################################################
-# GCP CONFIGURATION
+# VARIÁVEIS GCP
+# - O arquivo terraform.tfvars ou as variáveis no Terraform
+# Cloud irão suprir estes valores, sem expor segredos
+# diretamente no código. Em ambiente real, atentar para
+# versionamento e masking de logs.
 ############################################################
+
 variable "gcp_project_id" {
   type        = string
-  description = "ID do projeto GCP onde os recursos serão criados."
+  description = "ID do projeto GCP para provisionar recursos."
 }
 
 variable "gcp_region" {
@@ -33,23 +37,28 @@ variable "gcp_zone" {
 }
 
 ############################################################
-# CREDENCIAL DE CONTA DE SERVIÇO GCP
-#   Para não expor o arquivo JSON em repositórios ou 
-#   logs, converta o JSON da conta de serviço para uma 
-#   string base64 e armazene nessa variável.
+# CREDENCIAIS GCP
+# - Em produção, usar base64decode(var.gcp_sa_credentials_b64)
+# ou conectar via IAM de conta de serviço gerenciado.
 ############################################################
+
 variable "gcp_sa_credentials_b64" {
   type        = string
-  description = "Chave de conta de serviço GCP convertida para base64."
+  description = "Credenciais da conta de serviço GCP em formato base64."
   sensitive   = true
 }
 
 ############################################################
-# DATABRICKS CONFIGURATION
+# VARIÁVEIS DATABRICKS
+# - Token de acesso e host do workspace, marcados como
+# sensíveis para evitar exposição em logs.
+# - Em um projeto real, poderia usar Terraform Cloud
+# com var. sensíveis ou cofre de segredos.
 ############################################################
+
 variable "databricks_host" {
   type        = string
-  description = "URL do workspace Databricks (ex.: https://dbc-7a058f2d-3d4b.cloud.databricks.com)."
+  description = "URL do workspace Databricks (ex.: https://dbc-1234.cloud.databricks.com)."
 }
 
 variable "databricks_token" {
@@ -59,8 +68,11 @@ variable "databricks_token" {
 }
 
 ############################################################
-# GITHUB CONFIGURATION
+# VARIÁVEIS GITHUB
+# - Se o Terraform for gerenciar algo no GitHub (webhooks,
+# repositórios), definimos esse token. Marcar como sensitive.
 ############################################################
+
 variable "github_token" {
   type        = string
   description = "Personal Access Token do GitHub, com permissões adequadas."
@@ -68,14 +80,13 @@ variable "github_token" {
 }
 
 ############################################################
-# AMBIENTE
+# EXEMPLO DE OUTRAS VARIÁVEIS
+# - Caso necessite diferenciar ambientes (ex.: dev, prod),
+# declare abaixo. Ou use locals se for fixo.
 ############################################################
+
 variable "environment" {
   type        = string
   description = "Nome do ambiente (dev, staging, prod)."
   default     = "dev"
 }
-
-# Outras variáveis necessárias para módulos específicos
-# podem ser adicionadas aqui ou em arquivos de variáveis
-# separados dentro dos módulos.
