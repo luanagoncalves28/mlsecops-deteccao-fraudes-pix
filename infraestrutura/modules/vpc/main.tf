@@ -16,11 +16,7 @@ resource "google_compute_network" "vpc" {
   project                 = var.project_id
   auto_create_subnetworks = false
 
-  # Labels para controle, auditoria e rastreabilidade
-  labels = {
-    environment = var.environment
-    project     = "mlsecpix"
-  }
+  # As labels não são suportadas neste recurso, então foram removidas
 }
 
 # Cria a sub-rede associada à VPC criada acima.
