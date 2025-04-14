@@ -58,8 +58,8 @@ variable "spark_version" {
 
 variable "node_type_id" {
   type        = string
-  description = "Tipo de nó (ex.: 'Standard_DS3_v2', 'n1-standard-4')."
-  default     = "n1-standard-4"
+  description = "Tipo de nó (ex.: 'i3.xlarge', 'm5.large')."
+  default     = "i3.xlarge"  # Tipo de instância AWS compatível
 }
 
 variable "autotermination_minutes" {
