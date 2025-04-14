@@ -99,7 +99,9 @@ resource "databricks_job" "mlsecpix_pipeline" {
     notebook_task {
       notebook_path = databricks_notebook.silver_to_gold.path
     }
-    depends_on = ["bronze_to_silver"]
+    depends_on {
+      task_key = "bronze_to_silver"
+    }
     existing_cluster_id = databricks_cluster.mlsecpix_job_cluster.id
   }
 
