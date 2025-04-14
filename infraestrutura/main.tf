@@ -52,6 +52,27 @@ terraform {
 }
 
 ##########################################################
+# PROVIDERS
+# - Configurações explícitas para cada provider
+##########################################################
+
+provider "google" {
+  credentials = base64decode(var.gcp_sa_credentials_b64)
+  project     = var.gcp_project_id
+  region      = var.gcp_region
+  zone        = var.gcp_zone
+}
+
+provider "databricks" {
+  host  = var.databricks_host
+  token = var.databricks_token
+}
+
+provider "github" {
+  token = var.github_token
+}
+
+##########################################################
 # LOCAIS (LOCALS)
 # - Permitem padronizar nomenclaturas e reutilizar
 # convenções de forma simples.
