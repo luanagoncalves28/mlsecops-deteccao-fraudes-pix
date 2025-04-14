@@ -43,15 +43,12 @@ terraform {
     }
   }
 
-  # Em produção, usualmente definimos um backend remoto
-  # (ex.: GCS, AWS S3 ou Terraform Cloud) para armazenar
-  # o estado, garantindo alta disponibilidade e travas
-  # de concorrência (locking).
-  # backend "gcs" {
-  # bucket = "mlsecpix-tfstate"
-  # prefix = "state"
-  # project = "mlsecpix-456600"
-  # }
+  cloud {
+    organization = "tf-mlsecpix-org"
+    workspaces {
+      name = "mlsecpix-workspace"
+    }
+  }
 }
 
 ##########################################################
@@ -65,7 +62,7 @@ terraform {
 locals {
   # Convenção de nomes, útil para padronizar recursos
   project_prefix = "mlsecpix"
-  environment    = "dev" # Exemplo: dev, staging, prod
+  environment    = var.environment # Exemplo: dev, staging, prod
 
   # Notas de compliance podem ser incluídas ou vinculadas
   # a guidelines internas para rastreabilidade.
