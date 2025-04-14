@@ -1,102 +1,63 @@
-############################################################
+##########################################################
 # FILE: variables.tf
-# FOLDER: mlsecpix-infra/modules/gke/
+# MODULE: gke
 # DESCRIPTION:
-#   Declara as variáveis necessárias para criar e configurar
-#   o cluster GKE do projeto MLSecPix, seguindo Clean Code
-#   e MLSecOps. Em cenários de detecção de fraudes Pix, 
-#   precisamos de logs, monitoramento e compliance
-#   com a Resolução BCB nº 403, daí a importância de 
-#   rótulos, logs e configurações específicas.
-############################################################
+# Define variáveis para configuração do cluster GKE
+# para o projeto MLSecPix.
+##########################################################
 
-############################################################
-# PROJETO E REGIÃO GCP
-#   Identificam o projeto e a localização onde
-#   o cluster GKE será criado.
-############################################################
 variable "project_id" {
+  description = "ID do projeto GCP"
   type        = string
-  description = "ID do projeto GCP onde o GKE será criado."
 }
 
 variable "region" {
+  description = "Região do GCP para provisionar o cluster"
   type        = string
-  description = "Região GCP onde o cluster e node pool serão criados."
 }
 
-############################################################
-# REDE E SUB-REDE (LINKS)
-#   Recebemos do módulo VPC (outputs) o self_link da VPC
-#   e sub-rede, para conectar o cluster GKE adequadamente.
-############################################################
 variable "vpc_self_link" {
+  description = "Self link da VPC onde o cluster será provisionado"
   type        = string
-  description = "Self-link da VPC fornecido pelo módulo VPC."
 }
 
 variable "subnet_self_link" {
+  description = "Self link da subnet onde o cluster será provisionado"
   type        = string
-  description = "Self-link da sub-rede onde o cluster GKE ficará."
 }
 
-############################################################
-# NOME DO CLUSTER
-#   Pode ser customizado se quisermos rodar mais de um 
-#   cluster ou diferenciar ambientes (dev, staging, prod).
-############################################################
-variable "cluster_name" {
+variable "environment" {
+  description = "Ambiente (dev, staging, prod)"
   type        = string
-  description = "Nome do cluster GKE."
-  default     = "mlsecpix-cluster"
-}
-
-############################################################
-# RELEASE CHANNEL
-#   Permite definir se usaremos o canal 'STABLE', 'REGULAR'
-#   ou 'RAPID'. Em bancos e compliance, geralmente 
-#   preferimos 'REGULAR' ou 'STABLE' para evitar quebras.
-############################################################
-variable "release_channel" {
-  type        = string
-  description = "Canal de release do GKE (STABLE, REGULAR, RAPID)."
-  default     = "REGULAR"
-}
-
-############################################################
-# LABELS
-#   Ajuda no compliance e rastreabilidade. Ex.: associar
-#   'environment=dev', 'team=mlsecops' e etc. 
-############################################################
-variable "labels" {
-  type        = map(string)
-  description = "Mapeamento de rótulos para identificar o cluster."
-  default     = {
-    environment = "dev"
-    team        = "mlsecops"
-  }
-}
-
-############################################################
-# NODE POOL (NOME, CONTAGEM E MÁQUINA)
-#   Personaliza quantos nós, o tipo da máquina e o nome 
-#   do node pool, seguindo as necessidades de ML ou 
-#   workloads de detecção de fraudes.
-############################################################
-variable "node_pool_name" {
-  type        = string
-  description = "Nome para o node pool GKE."
-  default     = "mlsecpix-nodepool"
+  default     = "dev"
 }
 
 variable "node_count" {
+  description = "Número de nós por zona"
   type        = number
-  description = "Número de nós iniciais no node pool."
-  default     = 2
+  default     = 1
 }
 
-variable "node_machine_type" {
+variable "min_nodes" {
+  description = "Número mínimo de nós para autoscaling"
+  type        = number
+  default     = 1
+}
+
+variable "max_nodes" {
+  description = "Número máximo de nós para autoscaling"
+  type        = number
+  default     = 3
+}
+
+variable "machine_type" {
+  description = "Tipo de máquina para os nós do GKE"
   type        = string
-  description = "Tipo de máquina para os nós GKE (ex.: e2-medium)."
-  default     = "e2-medium"
+  default     = "e2-standard-2"
+}
+
+variable "labels" {
+  description = "Labels a serem aplicados ao cluster"
+  type        = map(string)
+  default     = {}
 }
