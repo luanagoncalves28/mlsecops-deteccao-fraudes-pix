@@ -35,10 +35,10 @@ terraform {
 
 resource "databricks_cluster" "mlsecpix_job_cluster" {
   cluster_name            = var.cluster_name
-  spark_version           = var.spark_version
-  node_type_id            = var.node_type_id
-  autotermination_minutes = var.autotermination_minutes
-  num_workers             = var.num_workers
+  spark_version           = "11.3.x-scala2.12"
+  node_type_id            = "n1-standard-4"
+  autotermination_minutes = 30
+  num_workers             = 0  # Single node cluster
 
   # Em MLSecOps, evitamos permissões excessivas.
   # Se for manipular dados Pix sensíveis,
@@ -48,6 +48,15 @@ resource "databricks_cluster" "mlsecpix_job_cluster" {
     "project"     = "mlsecpix"
     "environment" = var.environment
   }
+  
+  # Configurações específicas do Spark para single node
+  spark_conf = {
+    "spark.databricks.cluster.profile" : "singleNode"
+    "spark.master" : "local[*]"
+  }
+  
+  # Runtime standard para melhor compatibilidade
+  runtime_engine = "STANDARD"
 }
 
 ############################################################
