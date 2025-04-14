@@ -1,175 +1,92 @@
-##########################################################
-# FILE: main.tf
+############################################################
+# FILE: variables.tf
 # PROJECT: mlsecpix-infra
 # DESCRIPTION:
-# Arquivo principal que integra módulos de rede (VPC),
-# GKE, armazenamento em camadas (arquitetura medallion),
-# e jobs do Databricks. Segue princípios de Clean Code
-# e boas práticas de MLSecOps, mantendo cada recurso
-# em seu módulo dedicado e promovendo legibilidade.
+# Define as variáveis globais do projeto, seguindo
+# princípios de Clean Code e MLSecOps.
+# Em produção, recomenda-se armazenar valores sensíveis
+# em Vault/Secret Manager e não em plaintext.
 #
-# Este arquivo visa demonstrar um fluxo de infraestrutura
-# como código limpo e modular. Em um ambiente real de
-# produção, recomenda-se aprofundar configurações de
-# segurança e observabilidade (como logs e auditorias),
-# além de testes automatizados (por exemplo, usando
-# Terratest). Nenhuma credencial sensível está hardcoded
-# aqui, atendendo às políticas de compliance.
-##########################################################
+# Comentários contextuais para demonstrar expertise em
+# segurança, compliance e boas práticas de organização.
+############################################################
 
-##########################################################
-# BLOCO TERRAFORM
-# - Define a versão mínima do Terraform e os providers
-# requeridos, garantindo consistência de ambiente.
-# - Em produção, poderíamos fixar versões exatas ou
-# usar dependabot para manter atualizações seguras.
-##########################################################
+############################################################
+# VARIÁVEIS GCP
+# - O arquivo terraform.tfvars ou as variáveis no Terraform
+# Cloud irão suprir estes valores, sem expor segredos
+# diretamente no código. Em ambiente real, atentar para
+# versionamento e masking de logs.
+############################################################
 
-terraform {
-  required_version = ">= 1.3.0"
-
-  required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 4.30"
-    }
-    databricks = {
-      source  = "databricks/databricks"
-      version = "~> 1.7"
-    }
-    github = {
-      source  = "integrations/github"
-      version = "~> 4.0"
-    }
-  }
-
-  cloud {
-    organization = "tf-mlsecpix-org"
-    workspaces {
-      name = "mlsecpix-workspace"
-    }
-  }
+variable "gcp_project_id" {
+  type        = string
+  description = "ID do projeto GCP para provisionar recursos."
 }
 
-##########################################################
-# LOCAIS (LOCALS)
-# - Permitem padronizar nomenclaturas e reutilizar
-# convenções de forma simples.
-# - Aqui podem ser adicionadas regras de formatação de
-# nomes, garantindo consistência (Clean Code).
-##########################################################
-
-locals {
-  # Convenção de nomes, útil para padronizar recursos
-  project_prefix = "mlsecpix"
-  environment    = var.environment # Exemplo: dev, staging, prod
-
-  # Notas de compliance podem ser incluídas ou vinculadas
-  # a guidelines internas para rastreabilidade.
+variable "gcp_region" {
+  type        = string
+  description = "Região padrão para os recursos GCP (ex.: southamerica-east1)."
+  default     = "southamerica-east1"
 }
 
-##########################################################
-# MÓDULO: REDE (VPC)
-# - Cria a VPC principal e sub-redes.
-# - Em produção, poderíamos ter múltiplas sub-redes
-# segmentadas por workload e regras de firewall
-# integradas com Cloud Armor ou similares.
-##########################################################
-
-module "vpc" {
-  source     = "./modules/vpc"
-  project_id = var.gcp_project_id
-  region     = var.gcp_region
-
-  # Neste módulo exemplificamos a adoção de logs
-  # de fluxo de rede e configurações de firewall
-  # focadas em MLSecOps e privilégio mínimo.
+variable "gcp_zone" {
+  type        = string
+  description = "Zona padrão GCP (ex.: southamerica-east1-b)."
+  default     = "southamerica-east1-b"
 }
 
-##########################################################
-# MÓDULO: GKE
-# - Provisiona um cluster Kubernetes para rodar serviços
-# como APIs e pipelines de ML, seguindo boas práticas
-# de segurança (como Identity-Aware Proxy e RBAC).
-# - Em ambiente real, usaríamos Managed Identities,
-# e integrações com Secret Manager.
-##########################################################
+############################################################
+# CREDENCIAIS GCP
+# - Em produção, usar base64decode(var.gcp_sa_credentials_b64)
+# ou conectar via IAM de conta de serviço gerenciado.
+############################################################
 
-module "gke" {
-  source     = "./modules/gke"
-  project_id = var.gcp_project_id
-  region     = var.gcp_region
-  vpc_name   = module.vpc.vpc_name
-  subnet     = module.vpc.subnet_name
-
-  # Exemplo de rótulos de compliance e auditoria:
-  labels = {
-    "team"        = "mlsecops"
-    "environment" = local.environment
-    "component"   = "gke"
-  }
-
-  # Em produção, incluiríamos configurações avançadas
-  # como Private Nodes, VPC Service Controls, etc.
+variable "gcp_sa_credentials_b64" {
+  type        = string
+  description = "Credenciais da conta de serviço GCP em formato base64."
+  sensitive   = true
 }
 
-##########################################################
-# MÓDULO: STORAGE (ARQUITETURA MEDALLION)
-# - Cria buckets para Bronze, Silver e Gold.
-# - Em um uso real, ativaríamos versionamento de objetos,
-# logs de acesso e criptografia com chaves gerenciadas.
-##########################################################
+############################################################
+# VARIÁVEIS DATABRICKS
+# - Token de acesso e host do workspace, marcados como
+# sensíveis para evitar exposição em logs.
+# - Em um projeto real, poderia usar Terraform Cloud
+# com var. sensíveis ou cofre de segredos.
+############################################################
 
-module "storage" {
-  source           = "./modules/storage"
-  project_id       = var.gcp_project_id
-  region           = var.gcp_region
-  bronze_bucket_id = "${local.project_prefix}-${local.environment}-bronze"
-  silver_bucket_id = "${local.project_prefix}-${local.environment}-silver"
-  gold_bucket_id   = "${local.project_prefix}-${local.environment}-gold"
+variable "databricks_host" {
+  type        = string
+  description = "URL do workspace Databricks (ex.: https://dbc-1234.cloud.databricks.com)."
 }
 
-##########################################################
-# MÓDULO: DATABRICKS JOBS
-# - Configura notebooks e jobs de ETL/ML, já no workspace
-# especificado nas variáveis. Poderia envolver clusters
-# dedicados ou pools de computação.
-# - Em produção, associaríamos a logs e monitoramento
-# (Databricks Observability) e controle de acesso
-# detalhado (ACLs, secrets).
-##########################################################
-
-module "databricks_jobs" {
-  source             = "./modules/databricks-jobs"
-  databricks_host    = var.databricks_host
-  databricks_token   = var.databricks_token
-  workspace_base_dir = "/Users/lugonc.lga@gmail.com/mlsecops-deteccao-fraudes-pix"
+variable "databricks_token" {
+  type        = string
+  description = "Token de acesso Databricks."
+  sensitive   = true
 }
 
-##########################################################
-# EXEMPLO DE SAÍDAS
-# - Podemos exportar informações essenciais para uso
-# em outras camadas ou automação de testes (TDD/BDD).
-# - Em produção, outputs podem ser mascarados se forem
-# sensíveis. Aqui apenas ilustramos.
-##########################################################
+############################################################
+# VARIÁVEIS GITHUB
+# - Se o Terraform for gerenciar algo no GitHub (webhooks,
+# repositórios), definimos esse token. Marcar como sensitive.
+############################################################
 
-output "vpc_name" {
-  description = "Nome da VPC criada."
-  value       = module.vpc.vpc_name
+variable "github_token" {
+  type        = string
+  description = "Personal Access Token do GitHub, com permissões adequadas."
+  sensitive   = true
 }
 
-output "gke_endpoint" {
-  description = "Endpoint do cluster GKE."
-  value       = module.gke.endpoint
-}
+############################################################
+# EXEMPLO DE OUTRAS VARIÁVEIS
+# - Caso necessite diferenciar ambientes (ex.: dev, prod),
+# declare abaixo. Ou use locals se for fixo.
+############################################################
 
-output "bronze_bucket_name" {
-  description = "Bucket da camada Bronze."
-  value       = module.storage.bronze_bucket_name
-}
-
-output "databricks_jobs_info" {
-  description = "Identificadores dos jobs provisionados no Databricks."
-  value       = module.databricks_jobs.job_details
+variable "environment" {
+  type        = string
+  description = "Nome do ambiente (dev, staging, prod)."
+  default     = "dev"
 }
