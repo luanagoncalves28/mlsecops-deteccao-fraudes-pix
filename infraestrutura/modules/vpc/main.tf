@@ -1,42 +1,75 @@
-############################################################
+##########################################################
 # FILE: main.tf
-# FOLDER: mlsecpix-infra/modules/vpc/
+# MODULE: vpc
 # DESCRIPTION:
-#   Este arquivo cria os recursos de rede GCP necessários para
-#   o projeto MLSecPix. Ele provisiona uma VPC personalizada e
-#   uma sub-rede associada, utilizando as variáveis definidas em
-#   variable.tf. Dessa forma, o módulo VPC fica modularizado,
-#   facilitando a manutenção e a auditoria (com fluxo de logs habilitado)
-#   em conformidade com as melhores práticas de Clean Code e MLSecOps.
-############################################################
+# Cria a VPC e subnets para o projeto MLSecPix
+##########################################################
 
-# Cria a VPC personalizada sem sub-redes automáticas.
-resource "google_compute_network" "vpc" {
-  name                    = var.vpc_name
+resource "google_compute_network" "mlsecpix_vpc" {
+  name                    = "mlsecpix-vpc"
   project                 = var.project_id
   auto_create_subnetworks = false
+  routing_mode            = "GLOBAL"
+}
 
-  # Labels para controle, auditoria e rastreabilidade
-  labels = {
-    environment = var.environment
-    project     = "mlsecpix"
+resource "google_compute_subnetwork" "mlsecpix_subnet" {
+  name          = "mlsecpix-subnet"
+  project       = var.project_id
+  region        = var.region
+  network       = google_compute_network.mlsecpix_vpc.self_link
+  ip_cidr_range = "10.0.0.0/16"
+
+  secondary_ip_range {
+    range_name    = "mlsecpix-pod-range"
+    ip_cidr_range = "10.1.0.0/16"
+  }
+
+  secondary_ip_range {
+    range_name    = "mlsecpix-service-range"
+    ip_cidr_range = "10.2.0.0/16"
+  }
+
+  # Habilitar logs de fluxo para auditoria de rede
+  log_config {
+    aggregation_interval = "INTERVAL_5_SEC"
+    flow_sampling        = 0.5
+    metadata             = "INCLUDE_ALL_METADATA"
   }
 }
 
-# Cria a sub-rede associada à VPC criada acima.
-resource "google_compute_subnetwork" "subnet" {
-  name          = var.subnet_name
-  ip_cidr_range = var.cidr_subnet
-  region        = var.region
-  project       = var.project_id
-  network       = google_compute_network.vpc.id
+# Firewall para permitir acesso SSH e Health checks
+resource "google_compute_firewall" "allow_ssh_and_health" {
+  name    = "mlsecpix-allow-ssh-health"
+  network = google_compute_network.mlsecpix_vpc.name
+  project = var.project_id
 
-  # Habilita Flow Logs para garantir auditoria e conformidade 
-  # regulatória (por exemplo, requisitos da Resolução BCB nº 403).
+  allow {
+    protocol = "tcp"
+    ports    = ["22", "80", "443"]
+  }
+
+  source_ranges = ["35.191.0.0/16", "130.211.0.0/22", "209.85.152.0/22", "209.85.204.0/22"]
+  target_tags   = ["mlsecpix"]
+}
+
+# Cloud NAT para permitir que nodes sem IP público acessem a internet
+resource "google_compute_router" "mlsecpix_router" {
+  name    = "mlsecpix-router"
+  region  = var.region
+  network = google_compute_network.mlsecpix_vpc.self_link
+  project = var.project_id
+}
+
+resource "google_compute_router_nat" "mlsecpix_nat" {
+  name                               = "mlsecpix-nat"
+  router                             = google_compute_router.mlsecpix_router.name
+  region                             = var.region
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+  project                            = var.project_id
+
   log_config {
-    enable               = var.enable_flow_logs
-    aggregation_interval = "INTERVAL_5_MIN"
-    flow_sampling        = 0.5
-    metadata             = "INCLUDE_ALL_METADATA"
+    enable = true
+    filter = "ERRORS_ONLY"
   }
 }
