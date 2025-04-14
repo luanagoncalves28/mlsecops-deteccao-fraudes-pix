@@ -21,19 +21,19 @@ resource "google_container_cluster" "mlsecpix_cluster" {
   network    = var.vpc_self_link
   subnetwork = var.subnet_self_link
   
+  # Configuração mais leve para respeitar limites de cota
+  # Reduzindo o tamanho dos discos e configurações
+  default_max_pods_per_node = 32
+  
   # Ativar IP aliasing para melhor integração com 
-  # serviços do GCP e GKE
+  # serviços do GCP e GKE com config mínima
   ip_allocation_policy {
     cluster_ipv4_cidr_block  = "10.4.0.0/16"
     services_ipv4_cidr_block = "10.5.0.0/16"
   }
   
-  # Configurações de segurança
-  private_cluster_config {
-    enable_private_nodes    = true
-    enable_private_endpoint = false
-    master_ipv4_cidr_block  = "172.16.0.0/28"
-  }
+  # Configurações mais leves e sem private clusters
+  # para evitar consumo excessivo de cota
   
   # Habilitar workload identity para melhor segurança
   workload_identity_config {
@@ -65,19 +65,18 @@ resource "google_container_node_pool" "primary_nodes" {
   location   = var.region
   cluster    = google_container_cluster.mlsecpix_cluster.name
   project    = var.project_id
-  node_count = var.node_count
+  node_count = 1  # Reduzido para apenas 1 nó
   
   node_config {
-    preemptible  = var.environment == "prod" ? false : true
-    machine_type = var.machine_type
+    preemptible  = true  # Usando preemptible para reduzir custos
+    machine_type = "e2-medium"  # Tipo de máquina menor
+    disk_size_gb = 50  # Tamanho de disco menor
     
     # OAuth scopes para os nodes
     oauth_scopes = [
       "https://www.googleapis.com/auth/logging.write",
       "https://www.googleapis.com/auth/monitoring",
-      "https://www.googleapis.com/auth/devstorage.read_only",
-      "https://www.googleapis.com/auth/service.management.readonly",
-      "https://www.googleapis.com/auth/servicecontrol"
+      "https://www.googleapis.com/auth/devstorage.read_only"
     ]
     
     # Workload identity
@@ -87,12 +86,6 @@ resource "google_container_node_pool" "primary_nodes" {
     
     # Tags e labels
     labels = var.labels
-  }
-  
-  # Configuração de auto scaling
-  autoscaling {
-    min_node_count = var.min_nodes
-    max_node_count = var.max_nodes
   }
   
   # Configuração de atualização automática
