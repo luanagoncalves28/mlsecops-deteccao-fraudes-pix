@@ -53,7 +53,7 @@ variable "max_nodes" {
 variable "machine_type" {
   description = "Tipo de máquina para os nós do GKE"
   type        = string
-  default     = "e2-standard-2"
+  default     = "e2-medium"
 }
 
 variable "labels" {
