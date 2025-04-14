@@ -1,46 +1,50 @@
 ##########################################################
 # FILE: main.tf
-# MODULE: vpc
+# FOLDER: mlsecpix-infra/modules/vpc/
 # DESCRIPTION:
-# Cria a VPC e subnets para o projeto MLSecPix
+# Este arquivo cria os recursos de rede GCP necessários para
+# o projeto MLSecPix. Ele provisiona uma VPC personalizada e
+# uma sub-rede associada, utilizando as variáveis definidas em
+# variable.tf. Dessa forma, o módulo VPC fica modularizado,
+# facilitando a manutenção e a auditoria (com fluxo de logs habilitado)
+# em conformidade com as melhores práticas de Clean Code e MLSecOps.
 ##########################################################
 
-resource "google_compute_network" "mlsecpix_vpc" {
-  name                    = "mlsecpix-vpc"
+# Cria a VPC personalizada sem sub-redes automáticas.
+resource "google_compute_network" "vpc" {
+  name                    = var.vpc_name
   project                 = var.project_id
   auto_create_subnetworks = false
-  routing_mode            = "GLOBAL"
+
+  # Labels para controle, auditoria e rastreabilidade
+  labels = {
+    environment = var.environment
+    project     = "mlsecpix"
+  }
 }
 
-resource "google_compute_subnetwork" "mlsecpix_subnet" {
-  name          = "mlsecpix-subnet"
-  project       = var.project_id
+# Cria a sub-rede associada à VPC criada acima.
+resource "google_compute_subnetwork" "subnet" {
+  name          = var.subnet_name
+  ip_cidr_range = var.cidr_subnet
   region        = var.region
-  network       = google_compute_network.mlsecpix_vpc.self_link
-  ip_cidr_range = "10.0.0.0/16"
+  project       = var.project_id
+  network       = google_compute_network.vpc.id
 
-  secondary_ip_range {
-    range_name    = "mlsecpix-pod-range"
-    ip_cidr_range = "10.1.0.0/16"
-  }
-
-  secondary_ip_range {
-    range_name    = "mlsecpix-service-range"
-    ip_cidr_range = "10.2.0.0/16"
-  }
-
-  # Habilitar logs de fluxo para auditoria de rede
+  # Habilita Flow Logs para garantir auditoria e conformidade
+  # regulatória (por exemplo, requisitos da Resolução BCB nº 403).
   log_config {
-    aggregation_interval = "INTERVAL_5_SEC"
-    flow_sampling        = 0.5
-    metadata             = "INCLUDE_ALL_METADATA"
+    enable = var.enable_flow_logs
+    aggregation_interval = "INTERVAL_5_MIN"
+    flow_sampling = 0.5
+    metadata = "INCLUDE_ALL_METADATA"
   }
 }
 
 # Firewall para permitir acesso SSH e Health checks
 resource "google_compute_firewall" "allow_ssh_and_health" {
   name    = "mlsecpix-allow-ssh-health"
-  network = google_compute_network.mlsecpix_vpc.name
+  network = google_compute_network.vpc.name
   project = var.project_id
 
   allow {
@@ -56,7 +60,7 @@ resource "google_compute_firewall" "allow_ssh_and_health" {
 resource "google_compute_router" "mlsecpix_router" {
   name    = "mlsecpix-router"
   region  = var.region
-  network = google_compute_network.mlsecpix_vpc.self_link
+  network = google_compute_network.vpc.self_link
   project = var.project_id
 }
 
