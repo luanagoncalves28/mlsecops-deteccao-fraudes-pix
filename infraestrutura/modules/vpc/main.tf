@@ -15,7 +15,6 @@ resource "google_compute_network" "vpc" {
   name                    = var.vpc_name
   project                 = var.project_id
   auto_create_subnetworks = false
-
   # As labels não são suportadas neste recurso, então foram removidas
 }
 
@@ -29,11 +28,11 @@ resource "google_compute_subnetwork" "subnet" {
 
   # Habilita Flow Logs para garantir auditoria e conformidade
   # regulatória (por exemplo, requisitos da Resolução BCB nº 403).
+  # Nota: a estrutura do log_config foi corrigida de acordo com a sintaxe aceita pelo provider
   log_config {
-    enable = var.enable_flow_logs
     aggregation_interval = "INTERVAL_5_MIN"
-    flow_sampling = 0.5
-    metadata = "INCLUDE_ALL_METADATA"
+    flow_sampling        = 0.5
+    metadata             = "INCLUDE_ALL_METADATA"
   }
 }
 
