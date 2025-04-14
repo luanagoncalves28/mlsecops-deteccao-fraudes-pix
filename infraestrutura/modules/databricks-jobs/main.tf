@@ -36,7 +36,7 @@ terraform {
 resource "databricks_cluster" "mlsecpix_job_cluster" {
   cluster_name            = var.cluster_name
   spark_version           = "11.3.x-scala2.12"
-  node_type_id            = "n1-standard-4"
+  node_type_id            = "i3.xlarge"  # Tipo de instância AWS compatível
   autotermination_minutes = 30
   num_workers             = 0  # Single node cluster
 
@@ -54,9 +54,6 @@ resource "databricks_cluster" "mlsecpix_job_cluster" {
     "spark.databricks.cluster.profile" : "singleNode"
     "spark.master" : "local[*]"
   }
-  
-  # Runtime standard para melhor compatibilidade
-  runtime_engine = "STANDARD"
 }
 
 ############################################################
