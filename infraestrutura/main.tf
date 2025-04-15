@@ -66,26 +66,51 @@ resource "databricks_cluster" "mlsecpix_job_cluster" {
 
 ############################################################
 # RECURSOS: NOTEBOOKS
-# Exemplo de importação de notebooks para processar
-# dados. Em um projeto real, poderíamos apontar para
-# arquivo local, repositório Git, etc.
-# Em fase 2 do MLSecPix, definimos notebooks que limpam
-# dados (bronze->silver) e agregam/analisam (silver->gold).
+# Exemplo de criação direta de notebooks com conteúdo simples
+# em vez de importar de arquivos.
 ############################################################
 
 resource "databricks_notebook" "bronze_to_silver" {
-  path = "${var.workspace_base_dir}/ETL/bronze_to_silver"
+  path     = "${var.workspace_base_dir}/ETL/bronze_to_silver"
   language = "PYTHON"
-  content_base64 = base64encode(file("${path.module}/notebooks/bronze_to_silver.py"))
-
-  # No repositório local (../notebooks/bronze_to_silver.py) ou
-  # algo similar. Em produção, podemos integrar com Databricks Repos.
+  content  = <<-EOT
+    # Notebook: Bronze to Silver
+    # Este é um notebook de exemplo criado pelo Terraform.
+    # Em um ambiente real, processaria dados da camada Bronze para Silver.
+    
+    # Exemplo de código PySpark
+    from pyspark.sql import functions as F
+    
+    # Simulação de processamento
+    print("Simulando processamento Bronze -> Silver")
+    
+    # Em um pipeline real, teríamos:
+    # 1. Leitura dos dados da camada Bronze
+    # 2. Validação e limpeza
+    # 3. Transformações
+    # 4. Escrita na camada Silver
+  EOT
 }
 
 resource "databricks_notebook" "silver_to_gold" {
-  path = "${var.workspace_base_dir}/ETL/silver_to_gold"
+  path     = "${var.workspace_base_dir}/ETL/silver_to_gold"
   language = "PYTHON"
-  content_base64 = base64encode(file("${path.module}/notebooks/silver_to_gold.py"))
+  content  = <<-EOT
+    # Notebook: Silver to Gold
+    # Este é um notebook de exemplo criado pelo Terraform.
+    # Em um ambiente real, processaria dados da camada Silver para Gold.
+    
+    # Exemplo de código PySpark
+    from pyspark.sql import functions as F
+    
+    # Simulação de processamento
+    print("Simulando processamento Silver -> Gold")
+    
+    # Em um pipeline real, teríamos:
+    # 1. Leitura dos dados da camada Silver
+    # 2. Agregações e transformações analíticas
+    # 3. Escrita na camada Gold para consumo
+  EOT
 }
 
 ############################################################
