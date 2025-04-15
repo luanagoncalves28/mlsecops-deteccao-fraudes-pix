@@ -66,51 +66,20 @@ resource "databricks_cluster" "mlsecpix_job_cluster" {
 
 ############################################################
 # RECURSOS: NOTEBOOKS
-# Exemplo de criação direta de notebooks com conteúdo simples
-# em vez de importar de arquivos.
+# Em vez de usar o conteúdo direto, vamos usar um approach alternativo
+# com a API REST do Databricks para garantir compatibilidade.
 ############################################################
 
 resource "databricks_notebook" "bronze_to_silver" {
   path     = "${var.workspace_base_dir}/ETL/bronze_to_silver"
   language = "PYTHON"
-  content  = <<-EOT
-    # Notebook: Bronze to Silver
-    # Este é um notebook de exemplo criado pelo Terraform.
-    # Em um ambiente real, processaria dados da camada Bronze para Silver.
-    
-    # Exemplo de código PySpark
-    from pyspark.sql import functions as F
-    
-    # Simulação de processamento
-    print("Simulando processamento Bronze -> Silver")
-    
-    # Em um pipeline real, teríamos:
-    # 1. Leitura dos dados da camada Bronze
-    # 2. Validação e limpeza
-    # 3. Transformações
-    # 4. Escrita na camada Silver
-  EOT
+  source   = "data-base64:I0BhdXRob3IgUHJvamV0byBNTFNlY1BpeDogRGV0ZWNjYW8gZGUgRnJhdWRlcyBQaXgKZGVmIHByb2Nlc3NfZGF0YSgpOgogICAgIyBFeGVtcGxvIGRlIGNvZGlnbyBQeVNwYXJrIHBhcmEgcHJvY2Vzc2FyIGRhZG9zIEJyb256ZSAtPiBTaWx2ZXIKICAgIHByaW50KCJTaW11bGFuZG8gcHJvY2Vzc2FtZW50byBCcm9uemUgLT4gU2lsdmVyIikKICAgIAogICAgIyBFbSB1bSBwaXBlbGluZSByZWFsLCB0ZXJpYW1vczoKICAgICMgMS4gTGVpdHVyYSBkb3MgZGFkb3MgZGEgY2FtYWRhIEJyb256ZQogICAgIyAyLiBWYWxpZGFjYW8gZSBsaW1wZXphCiAgICAjIDMuIFRyYW5zZm9ybWFjb2VzCiAgICAjIDQuIEVzY3JpdGEgbmEgY2FtYWRhIFNpbHZlcgogICAgcmV0dXJuIFRydWUKCmlmIF9fbmFtZV9fID09ICJfX21haW5fXyI6CiAgICBwcm9jZXNzX2RhdGEoKQ=="
 }
 
 resource "databricks_notebook" "silver_to_gold" {
   path     = "${var.workspace_base_dir}/ETL/silver_to_gold"
   language = "PYTHON"
-  content  = <<-EOT
-    # Notebook: Silver to Gold
-    # Este é um notebook de exemplo criado pelo Terraform.
-    # Em um ambiente real, processaria dados da camada Silver para Gold.
-    
-    # Exemplo de código PySpark
-    from pyspark.sql import functions as F
-    
-    # Simulação de processamento
-    print("Simulando processamento Silver -> Gold")
-    
-    # Em um pipeline real, teríamos:
-    # 1. Leitura dos dados da camada Silver
-    # 2. Agregações e transformações analíticas
-    # 3. Escrita na camada Gold para consumo
-  EOT
+  source   = "data-base64:I0BhdXRob3IgUHJvamV0byBNTFNlY1BpeDogRGV0ZWNjYW8gZGUgRnJhdWRlcyBQaXgKZGVmIHByb2Nlc3NfZGF0YSgpOgogICAgIyBFeGVtcGxvIGRlIGNvZGlnbyBQeVNwYXJrIHBhcmEgcHJvY2Vzc2FyIGRhZG9zIFNpbHZlciAtPiBHb2xkCiAgICBwcmludCgiU2ltdWxhbmRvIHByb2Nlc3NhbWVudG8gU2lsdmVyIC0+IEdvbGQiKQogICAgCiAgICAjIEVtIHVtIHBpcGVsaW5lIHJlYWwsIHRlcmlhbW9zOgogICAgIyAxLiBMZWl0dXJhIGRvcyBkYWRvcyBkYSBjYW1hZGEgU2lsdmVyCiAgICAjIDIuIEFncmVnYWNvZXMgZSB0cmFuc2Zvcm1hY29lcwogICAgIyAzLiBFc2NyaXRhIG5hIGNhbWFkYSBHb2xkCiAgICByZXR1cm4gVHJ1ZQoKaWYgX19uYW1lX18gPT0gIl9fbWFpbl9fIjoKICAgIHByb2Nlc3NfZGF0YSgp"
 }
 
 ############################################################
