@@ -1,92 +1,119 @@
 ############################################################
 # FILE: variables.tf
-# PROJECT: mlsecpix-infra
+# FOLDER: mlsecpix-infra/modules/databricks-jobs/
 # DESCRIPTION:
-# Define as variáveis globais do projeto, seguindo
-# princípios de Clean Code e MLSecOps.
-# Em produção, recomenda-se armazenar valores sensíveis
-# em Vault/Secret Manager e não em plaintext.
-#
-# Comentários contextuais para demonstrar expertise em
-# segurança, compliance e boas práticas de organização.
+# Define as variáveis necessárias para criar e gerenciar
+# um cluster, notebooks e um job no Databricks, focando
+# em um pipeline de detecção de fraudes Pix (MLSecPix).
+# Este arquivo complementa o main.tf e segue Clean Code
+# e MLSecOps: cada parâmetro é configurável e não
+# hardcoded, garantindo segurança, rastreabilidade e
+# adequação às fases 1, 2 e 3 do projeto.
 ############################################################
 
 ############################################################
-# VARIÁVEIS GCP
-# - O arquivo terraform.tfvars ou as variáveis no Terraform
-# Cloud irão suprir estes valores, sem expor segredos
-# diretamente no código. Em ambiente real, atentar para
-# versionamento e masking de logs.
-############################################################
-
-variable "gcp_project_id" {
-  type        = string
-  description = "ID do projeto GCP para provisionar recursos."
-}
-
-variable "gcp_region" {
-  type        = string
-  description = "Região padrão para os recursos GCP (ex.: southamerica-east1)."
-  default     = "southamerica-east1"
-}
-
-variable "gcp_zone" {
-  type        = string
-  description = "Zona padrão GCP (ex.: southamerica-east1-b)."
-  default     = "southamerica-east1-b"
-}
-
-############################################################
-# CREDENCIAIS GCP
-# - Em produção, usar base64decode(var.gcp_sa_credentials_b64)
-# ou conectar via IAM de conta de serviço gerenciado.
-############################################################
-
-variable "gcp_sa_credentials_b64" {
-  type        = string
-  description = "Credenciais da conta de serviço GCP em formato base64."
-  sensitive   = true
-}
-
-############################################################
-# VARIÁVEIS DATABRICKS
-# - Token de acesso e host do workspace, marcados como
-# sensíveis para evitar exposição em logs.
-# - Em um projeto real, poderia usar Terraform Cloud
-# com var. sensíveis ou cofre de segredos.
-############################################################
-
-variable "databricks_host" {
-  type        = string
-  description = "URL do workspace Databricks (ex.: https://dbc-1234.cloud.databricks.com)."
-}
-
-variable "databricks_token" {
-  type        = string
-  description = "Token de acesso Databricks."
-  sensitive   = true
-}
-
-############################################################
-# VARIÁVEIS GITHUB
-# - Se o Terraform for gerenciar algo no GitHub (webhooks,
-# repositórios), definimos esse token. Marcar como sensitive.
-############################################################
-
-variable "github_token" {
-  type        = string
-  description = "Personal Access Token do GitHub, com permissões adequadas."
-  sensitive   = true
-}
-
-############################################################
-# EXEMPLO DE OUTRAS VARIÁVEIS
-# - Caso necessite diferenciar ambientes (ex.: dev, prod),
-# declare abaixo. Ou use locals se for fixo.
+# AMBIENTE (DEV, STAGING, PROD)
+# Pode ser usado para rotular recursos no Databricks
+# (ex.: "dev", "mlsecpix") e gerar tags que auxiliam
+# na auditoria e conformidade com BCB nº 403.
 ############################################################
 
 variable "environment" {
   type        = string
   description = "Nome do ambiente (dev, staging, prod)."
   default     = "dev"
+}
+
+############################################################
+# BASE DO WORKSPACE (DIRETÓRIO)
+# Onde os notebooks serão importados. Exemplo:
+# "/Users/lugonc.lga@gmail.com/mlsecops-deteccao-fraudes-pix"
+############################################################
+
+variable "workspace_base_dir" {
+  type        = string
+  description = "Diretório base onde os notebooks serão importados no Databricks."
+  default     = "/Users/lugonc.lga@gmail.com/mlsecops-deteccao-fraudes-pix"
+}
+
+############################################################
+# CLUSTER SETTINGS
+# Parâmetros para criar um cluster dedicado (caso não
+# usemos 'existing_cluster_id'). Em produção, pode
+# haver configurações extras como Spark config,
+# autoscaling, ACLs, etc.
+############################################################
+
+variable "cluster_name" {
+  type        = string
+  description = "Nome do cluster Databricks."
+  default     = "mlsecpix-job-cluster"
+}
+
+variable "spark_version" {
+  type        = string
+  description = "Versão do Spark no Databricks (ex.: 11.3.x-scala2.12)."
+  default     = "11.3.x-scala2.12"
+}
+
+variable "node_type_id" {
+  type        = string
+  description = "Tipo de nó (ex.: 'm5.large', 'm4.large')."
+  default     = "m5.large"  # Tipo de instância AWS mais básico
+}
+
+variable "autotermination_minutes" {
+  type        = number
+  description = "Tempo em minutos para encerrar cluster ocioso (MLSecOps: poupar custo)."
+  default     = 30
+}
+
+variable "num_workers" {
+  type        = number
+  description = "Número de workers do cluster."
+  default     = 0  # Single node cluster
+}
+
+############################################################
+# JOB CONFIG
+# Nome do job, schedule (cron), owner, etc.
+# Em um projeto MLSecOps real, definimos triggers
+# automáticos, e logs de auditoria do job.
+############################################################
+
+variable "job_name" {
+  type        = string
+  description = "Nome do job Databricks que orquestra notebooks."
+  default     = "mlsecpix-pipeline"
+}
+
+variable "job_cron" {
+  type        = string
+  description = "Expressão CRON para agendar o job (ex.: 0 2 * * * ?)."
+  default     = "0 3 * * * ?"
+  # 3h da manhã todos os dias
+  # Ajuste conforme necessidade
+}
+
+variable "job_owner" {
+  type        = string
+  description = "Tag que indica o responsável pelo job."
+  default     = "mlsecops-team"
+}
+
+############################################################
+# DATABRICKS CONNECTION
+# Informações de conexão com o Databricks.
+# Estas variáveis são injetadas do módulo raiz.
+############################################################
+
+variable "databricks_host" {
+  type        = string
+  description = "URL do workspace Databricks."
+}
+
+variable "databricks_token" {
+  type        = string
+  description = "Token de acesso ao Databricks."
+  sensitive   = true
 }

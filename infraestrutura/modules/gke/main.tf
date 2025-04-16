@@ -1,106 +1,96 @@
-############################################################
+##########################################################
 # FILE: main.tf
 # FOLDER: mlsecpix-infra/modules/gke/
 # DESCRIPTION:
-#   Cria um cluster GKE e um node pool, integrando-se a 
-#   práticas de MLSecOps. Suporta auditoria, rótulos e 
-#   configurações de segurança (RBAC, Flow Logs na VPC).
-#   Em ambientes de detecção de fraudes Pix, rodar cargas
-#   de trabalho no GKE com logs e restrições de acesso 
-#   atende requisitos regulatórios (BCB nº 403).
-#
-#   Em produção, poderíamos habilitar Private Nodes, 
-#   Master Authorized Networks ou Identity-Aware Proxy.
-#   Aqui ilustramos um fluxo essencial, com a mentalidade
-#   de Clean Code e compliance. 
-############################################################
+# Configura o Google Kubernetes Engine (GKE) para hospedar 
+# os componentes do sistema de detecção de fraudes no Pix.
+# Este módulo cria um cluster GKE seguindo boas práticas
+# de segurança e MLSecOps.
+##########################################################
 
-############################################################
-# RECURSOS USADOS:
-#   - google_container_cluster
-#   - google_container_node_pool
-#
-# VARIÁVEIS:
-#   - Recebidas via variables.tf (project_id, region, 
-#     vpc_self_link, subnet_self_link, etc.)
-#   - Cada parâmetro que possa variar é declarado em
-#     variables.tf, para evitar duplicação e facilitar
-#     manutenção. 
-############################################################
-
-
-# Cria o cluster GKE principal, sem node pool padrão,
-# para termos controle total (remoção do default pool).
-resource "google_container_cluster" "this" {
-  name                = var.cluster_name
-  project             = var.project_id
-  location            = var.region
-  network             = var.vpc_self_link
-  subnetwork          = var.subnet_self_link
+resource "google_container_cluster" "mlsecpix_cluster" {
+  name     = "mlsecpix-cluster-${var.environment}"
+  location = var.region
+  project  = var.project_id
+  
+  # Remover o node pool padrão que o GKE cria
   remove_default_node_pool = true
-
-  # Opcional: canal de release. Em produção, "REGULAR" 
-  # ou "STABLE" são comuns. "RAPID" é mais arriscado.
+  initial_node_count       = 1
+  
+  # Configurações de rede
+  network    = var.vpc_self_link
+  subnetwork = var.subnet_self_link
+  
+  # Configuração mais leve para respeitar limites de cota
+  # Reduzindo o tamanho dos discos e configurações
+  default_max_pods_per_node = 32
+  
+  # Ativar IP aliasing para melhor integração com 
+  # serviços do GCP e GKE com config mínima
+  ip_allocation_policy {
+    cluster_ipv4_cidr_block  = "10.4.0.0/16"
+    services_ipv4_cidr_block = "10.5.0.0/16"
+  }
+  
+  # Configurações mais leves e sem private clusters
+  # para evitar consumo excessivo de cota
+  
+  # Habilitar workload identity para melhor segurança
+  workload_identity_config {
+    workload_pool = "${var.project_id}.svc.id.goog"
+  }
+  
+  # Configurações de logging e monitoramento
+  logging_service    = "logging.googleapis.com/kubernetes"
+  monitoring_service = "monitoring.googleapis.com/kubernetes"
+  
+  # Configurações de segurança adicionais
+  master_auth {
+    client_certificate_config {
+      issue_client_certificate = false
+    }
+  }
+  
+  # Configurações de release channel
   release_channel {
-    channel = var.release_channel
+    channel = "REGULAR"
   }
 
-  # Exemplo: habilitar logging para auditoria MLSecOps.
-  # "system_components" e "workloads" podem ser configurados
-  # conforme necessidade.
-  logging_config {
-    enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
-  }
-
-  # Monitoramento também é vital para compliance e 
-  # observabilidade.
-  monitoring_config {
-    enable_components = ["SYSTEM_COMPONENTS", "WORKLOADS"]
-  }
-
-  # Rótulos para fins de compliance, rastreabilidade 
-  # e custo. 
+  # Configurar tags
   resource_labels = var.labels
-
-  # Em produção MLSecOps, ativar private cluster, 
-  # mas isso exige configurações de IPs extras.
-  # private_cluster_config {
-  #   enable_private_endpoint = true
-  #   enable_private_nodes    = true
-  #   master_ipv4_cidr_block = "172.16.0.0/28"
-  # }
 }
 
-# Node pool separado para garantir escalabilidade 
-# e configurações específicas. Em ambientes de ML, 
-# podemos escolher máquinas mais robustas (GPU, etc).
-resource "google_container_node_pool" "node_pool" {
-  name       = var.node_pool_name
-  project    = var.project_id
+resource "google_container_node_pool" "primary_nodes" {
+  name       = "mlsecpix-primary-node-pool"
   location   = var.region
-  cluster    = google_container_cluster.this.name
-  node_count = var.node_count
-
+  cluster    = google_container_cluster.mlsecpix_cluster.name
+  project    = var.project_id
+  node_count = 1  # Reduzido para apenas 1 nó
+  
   node_config {
-    machine_type = var.node_machine_type
-    labels       = var.labels
-    # Podem ser definidas scopes, service_account, 
-    # e etc. Em cenários MLSecOps, cuidado com 
-    # permissões de service_account.
+    preemptible  = true  # Usando preemptible para reduzir custos
+    machine_type = "e2-medium"  # Tipo de máquina menor
+    disk_size_gb = 50  # Tamanho de disco menor
+    
+    # OAuth scopes para os nodes
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/logging.write",
+      "https://www.googleapis.com/auth/monitoring",
+      "https://www.googleapis.com/auth/devstorage.read_only"
+    ]
+    
+    # Workload identity
+    workload_metadata_config {
+      mode = "GKE_METADATA"
+    }
+    
+    # Tags e labels
+    labels = var.labels
   }
-
-  # Se quisermos autoescalamento:
-  # autoscaling {
-  #   min_node_count = 1
-  #   max_node_count = 5
-  # }
-
-  # Logging de eventos no pool, dependendo do nível
-  # de auditoria exigido
-  upgrade_settings {
-    # Em um cluster real, definimos max_surge e 
-    # max_unavailable para upgrades controlados.
-    max_surge       = 1
-    max_unavailable = 0
+  
+  # Configuração de atualização automática
+  management {
+    auto_repair  = true
+    auto_upgrade = true
   }
 }

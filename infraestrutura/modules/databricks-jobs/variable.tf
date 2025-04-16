@@ -58,8 +58,8 @@ variable "spark_version" {
 
 variable "node_type_id" {
   type        = string
-  description = "Tipo de nó (ex.: 'Standard_DS3_v2', 'i3.xlarge')."
-  default     = "i3.xlarge"
+  description = "Tipo de nó (ex.: 'i3.xlarge', 'm5.large')."
+  default     = "i3.xlarge"  # Tipo de instância AWS compatível
 }
 
 variable "autotermination_minutes" {
@@ -71,7 +71,7 @@ variable "autotermination_minutes" {
 variable "num_workers" {
   type        = number
   description = "Número de workers do cluster."
-  default     = 2
+  default     = 0  # Single node cluster
 }
 
 ############################################################

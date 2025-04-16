@@ -1,178 +1,129 @@
-##########################################################
+############################################################
 # FILE: main.tf
-# PROJECT: mlsecpix-infra
+# FOLDER: mlsecpix-infra/modules/databricks-jobs/
 # DESCRIPTION:
-# Arquivo principal que integra módulos de rede (VPC),
-# GKE, armazenamento em camadas (arquitetura medallion),
-# e jobs do Databricks. Segue princípios de Clean Code
-# e boas práticas de MLSecOps, mantendo cada recurso
-# em seu módulo dedicado e promovendo legibilidade.
+# Cria recursos no workspace Databricks para sustentar o
+# pipeline de detecção de fraudes Pix (MLSecPix). Exemplos:
+# - Um cluster dedicado para jobs
+# - Notebooks que processam dados (bronze->silver->gold)
+# - Um job que executa esses notebooks em sequência
 #
-# Este arquivo visa demonstrar um fluxo de infraestrutura
-# como código limpo e modular. Em um ambiente real de
-# produção, recomenda-se aprofundar configurações de
-# segurança e observabilidade (como logs e auditorias),
-# além de testes automatizados (por exemplo, usando
-# Terratest). Nenhuma credencial sensível está hardcoded
-# aqui, atendendo às políticas de compliance.
-##########################################################
-
-##########################################################
-# BLOCO TERRAFORM
-# - Define a versão mínima do Terraform e os providers
-# requeridos, garantindo consistência de ambiente.
-# - Em produção, poderíamos fixar versões exatas ou
-# usar dependabot para manter atualizações seguras.
-##########################################################
+# Em projetos MLSecOps, é fundamental manter rastreabilidade
+# (quem rodou, quando, logs de execução), e evitar tokens
+# hardcoded. Aqui usamos var.databricks_host e
+# var.databricks_token, atendendo às fases 1, 2, 3 do
+# MLSecPix e princípios de Clean Code.
+############################################################
 
 terraform {
-  required_version = ">= 1.3.0"
-
   required_providers {
-    google = {
-      source  = "hashicorp/google"
-      version = "~> 4.30"
-    }
     databricks = {
       source  = "databricks/databricks"
       version = "~> 1.7"
     }
-    github = {
-      source  = "integrations/github"
-      version = "~> 4.0"
+  }
+}
+
+############################################################
+# RECURSO: CLUSTER DEDICADO
+# Poderíamos usar "existing_cluster_id" se já houvesse
+# um cluster. Aqui, criamos um cluster para jobs
+# exemplificando um fluxo real de ETL/ML.
+# Em produção, poderíamos configurar auto-termination,
+# Spark version, node types, entre outros.
+############################################################
+
+resource "databricks_cluster" "mlsecpix_job_cluster" {
+  cluster_name            = var.cluster_name
+  spark_version           = "11.3.x-scala2.12"
+  node_type_id            = "m5.large"  # Tipo de instância AWS mais básico
+  autotermination_minutes = 30
+  num_workers             = 0  # Single node cluster
+
+  # Em MLSecOps, evitamos permissões excessivas.
+  # Se for manipular dados Pix sensíveis,
+  # atentar para ACLs e IP restrictions (Databricks Repos).
+  # Exemplo de label para auditoria
+  custom_tags = {
+    "project"     = "mlsecpix"
+    "environment" = var.environment
+  }
+  
+  # Configurações específicas do Spark para single node
+  spark_conf = {
+    "spark.databricks.cluster.profile" : "singleNode"
+    "spark.master" : "local[*]"
+  }
+
+  # AWS specific
+  aws_attributes {
+    availability           = "SPOT"
+    zone_id                = "auto"
+    first_on_demand        = 1
+    spot_bid_price_percent = 100
+  }
+}
+
+############################################################
+# RECURSOS: NOTEBOOKS
+# Em vez de usar o conteúdo direto, vamos usar um approach alternativo
+# com a API REST do Databricks para garantir compatibilidade.
+############################################################
+
+resource "databricks_notebook" "bronze_to_silver" {
+  path     = "${var.workspace_base_dir}/ETL/bronze_to_silver"
+  language = "PYTHON"
+  source   = "data-base64:I0BhdXRob3IgUHJvamV0byBNTFNlY1BpeDogRGV0ZWNjYW8gZGUgRnJhdWRlcyBQaXgKZGVmIHByb2Nlc3NfZGF0YSgpOgogICAgIyBFeGVtcGxvIGRlIGNvZGlnbyBQeVNwYXJrIHBhcmEgcHJvY2Vzc2FyIGRhZG9zIEJyb256ZSAtPiBTaWx2ZXIKICAgIHByaW50KCJTaW11bGFuZG8gcHJvY2Vzc2FtZW50byBCcm9uemUgLT4gU2lsdmVyIikKICAgIAogICAgIyBFbSB1bSBwaXBlbGluZSByZWFsLCB0ZXJpYW1vczoKICAgICMgMS4gTGVpdHVyYSBkb3MgZGFkb3MgZGEgY2FtYWRhIEJyb256ZQogICAgIyAyLiBWYWxpZGFjYW8gZSBsaW1wZXphCiAgICAjIDMuIFRyYW5zZm9ybWFjb2VzCiAgICAjIDQuIEVzY3JpdGEgbmEgY2FtYWRhIFNpbHZlcgogICAgcmV0dXJuIFRydWUKCmlmIF9fbmFtZV9fID09ICJfX21haW5fXyI6CiAgICBwcm9jZXNzX2RhdGEoKQ=="
+}
+
+resource "databricks_notebook" "silver_to_gold" {
+  path     = "${var.workspace_base_dir}/ETL/silver_to_gold"
+  language = "PYTHON"
+  source   = "data-base64:I0BhdXRob3IgUHJvamV0byBNTFNlY1BpeDogRGV0ZWNjYW8gZGUgRnJhdWRlcyBQaXgKZGVmIHByb2Nlc3NfZGF0YSgpOgogICAgIyBFeGVtcGxvIGRlIGNvZGlnbyBQeVNwYXJrIHBhcmEgcHJvY2Vzc2FyIGRhZG9zIFNpbHZlciAtPiBHb2xkCiAgICBwcmludCgiU2ltdWxhbmRvIHByb2Nlc3NhbWVudG8gU2lsdmVyIC0+IEdvbGQiKQogICAgCiAgICAjIEVtIHVtIHBpcGVsaW5lIHJlYWwsIHRlcmlhbW9zOgogICAgIyAxLiBMZWl0dXJhIGRvcyBkYWRvcyBkYSBjYW1hZGEgU2lsdmVyCiAgICAjIDIuIEFncmVnYWNvZXMgZSB0cmFuc2Zvcm1hY29lcwogICAgIyAzLiBFc2NyaXRhIG5hIGNhbWFkYSBHb2xkCiAgICByZXR1cm4gVHJ1ZQoKaWYgX19uYW1lX18gPT0gIl9fbWFpbl9fIjoKICAgIHByb2Nlc3NfZGF0YSgp"
+}
+
+############################################################
+# RECURSO: JOB
+# Define um job que executa os notebooks. Em ambiente real,
+# poderíamos ter tasks paralelas, condicional, triggers
+# em cron, etc. Em fase 3 do MLSecPix, orquestra pipelines
+# com logs e monitoramento.
+############################################################
+
+resource "databricks_job" "mlsecpix_pipeline" {
+  name = var.job_name
+
+  # Exemplo: duas tasks que rodam notebooks em sequência.
+  task {
+    task_key = "bronze_to_silver"
+    notebook_task {
+      notebook_path = databricks_notebook.bronze_to_silver.path
     }
+    existing_cluster_id = databricks_cluster.mlsecpix_job_cluster.id
   }
 
-  # Em produção, usualmente definimos um backend remoto
-  # (ex.: GCS, AWS S3 ou Terraform Cloud) para armazenar
-  # o estado, garantindo alta disponibilidade e travas
-  # de concorrência (locking).
-  # backend "gcs" {
-  # bucket = "mlsecpix-tfstate"
-  # prefix = "state"
-  # project = "mlsecpix-456600"
-  # }
-}
-
-##########################################################
-# LOCAIS (LOCALS)
-# - Permitem padronizar nomenclaturas e reutilizar
-# convenções de forma simples.
-# - Aqui podem ser adicionadas regras de formatação de
-# nomes, garantindo consistência (Clean Code).
-##########################################################
-
-locals {
-  # Convenção de nomes, útil para padronizar recursos
-  project_prefix = "mlsecpix"
-  environment    = "dev" # Exemplo: dev, staging, prod
-
-  # Notas de compliance podem ser incluídas ou vinculadas
-  # a guidelines internas para rastreabilidade.
-}
-
-##########################################################
-# MÓDULO: REDE (VPC)
-# - Cria a VPC principal e sub-redes.
-# - Em produção, poderíamos ter múltiplas sub-redes
-# segmentadas por workload e regras de firewall
-# integradas com Cloud Armor ou similares.
-##########################################################
-
-module "vpc" {
-  source     = "./modules/vpc"
-  project_id = var.gcp_project_id
-  region     = var.gcp_region
-
-  # Neste módulo exemplificamos a adoção de logs
-  # de fluxo de rede e configurações de firewall
-  # focadas em MLSecOps e privilégio mínimo.
-}
-
-##########################################################
-# MÓDULO: GKE
-# - Provisiona um cluster Kubernetes para rodar serviços
-# como APIs e pipelines de ML, seguindo boas práticas
-# de segurança (como Identity-Aware Proxy e RBAC).
-# - Em ambiente real, usaríamos Managed Identities,
-# e integrações com Secret Manager.
-##########################################################
-
-module "gke" {
-  source     = "./modules/gke"
-  project_id = var.gcp_project_id
-  region     = var.gcp_region
-  vpc_name   = module.vpc.vpc_name
-  subnet     = module.vpc.subnet_name
-
-  # Exemplo de rótulos de compliance e auditoria:
-  labels = {
-    "team"        = "mlsecops"
-    "environment" = local.environment
-    "component"   = "gke"
+  task {
+    task_key = "silver_to_gold"
+    notebook_task {
+      notebook_path = databricks_notebook.silver_to_gold.path
+    }
+    depends_on {
+      task_key = "bronze_to_silver"
+    }
+    existing_cluster_id = databricks_cluster.mlsecpix_job_cluster.id
   }
 
-  # Em produção, incluiríamos configurações avançadas
-  # como Private Nodes, VPC Service Controls, etc.
-}
+  # Exemplo de schedule. Em produção, poderíamos
+  # usar "cron_schedule" (string "0 3 * * * ?" e etc.).
+  schedule {
+    quartz_cron_expression = var.job_cron
+    timezone_id = "America/Sao_Paulo"
+  }
 
-##########################################################
-# MÓDULO: STORAGE (ARQUITETURA MEDALLION)
-# - Cria buckets para Bronze, Silver e Gold.
-# - Em um uso real, ativaríamos versionamento de objetos,
-# logs de acesso e criptografia com chaves gerenciadas.
-##########################################################
-
-module "storage" {
-  source           = "./modules/storage"
-  project_id       = var.gcp_project_id
-  region           = var.gcp_region
-  bronze_bucket_id = "${local.project_prefix}-${local.environment}-bronze"
-  silver_bucket_id = "${local.project_prefix}-${local.environment}-silver"
-  gold_bucket_id   = "${local.project_prefix}-${local.environment}-gold"
-}
-
-##########################################################
-# MÓDULO: DATABRICKS JOBS
-# - Configura notebooks e jobs de ETL/ML, já no workspace
-# especificado nas variáveis. Poderia envolver clusters
-# dedicados ou pools de computação.
-# - Em produção, associaríamos a logs e monitoramento
-# (Databricks Observability) e controle de acesso
-# detalhado (ACLs, secrets).
-##########################################################
-
-module "databricks_jobs" {
-  source             = "./modules/databricks-jobs"
-  databricks_host    = var.databricks_host
-  databricks_token   = var.databricks_token
-  workspace_base_dir = "/Users/lugonc.lga@gmail.com/mlsecops-deteccao-fraudes-pix"
-}
-
-##########################################################
-# EXEMPLO DE SAÍDAS
-# - Podemos exportar informações essenciais para uso
-# em outras camadas ou automação de testes (TDD/BDD).
-# - Em produção, outputs podem ser mascarados se forem
-# sensíveis. Aqui apenas ilustramos.
-##########################################################
-
-output "vpc_name" {
-  description = "Nome da VPC criada."
-  value       = module.vpc.vpc_name
-}
-
-output "gke_endpoint" {
-  description = "Endpoint do cluster GKE."
-  value       = module.gke.endpoint
-}
-
-output "bronze_bucket_name" {
-  description = "Bucket da camada Bronze."
-  value       = module.storage.bronze_bucket_name
-}
-
-output "databricks_jobs_info" {
-  description = "Identificadores dos jobs provisionados no Databricks."
-  value       = module.databricks_jobs.job_details
+  # Tagging para compliance e auditoria no Databricks
+  tags = {
+    "project"     = "mlsecpix"
+    "environment" = var.environment
+    "owner"       = var.job_owner
+  }
 }
