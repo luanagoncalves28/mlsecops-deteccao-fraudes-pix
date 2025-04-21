@@ -1,6 +1,6 @@
 terraform {
   cloud {
-    organization = "SUBSTITUA_PELA_SUA_ORG_TFC"
+    organization = "tf-mlsecpix-org"
     workspaces {
       name = "mlsecpix-dev"
     }
