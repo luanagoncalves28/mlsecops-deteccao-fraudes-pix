@@ -79,12 +79,24 @@ module "gke" {
 }
 
 ###############################################################################
-# 4.  Módulo de bootstrap – namespaces + Workload Identity
+# 3. Módulo de bootstrap no cluster GKE  – namespace “ml” + Workload Identity #
 ###############################################################################
-
 module "k8s_bootstrap" {
-  source = "../modules/k8s_bootstrap"   # <- caminho correto do módulo local
+  source = "../modules/k8s_bootstrap"
 
-  project_id = var.gcp_project_id       # passa o ID do projeto
-  region     = var.gcp_region           # mesma região usada no cluster
+  # variáveis que o módulo espera
+  project_id = var.gcp_project_id
+  region     = var.gcp_region
+
+  ############################################
+  # <<< ponto‑chave >>
+  # indicamos que ele deve usar o provider
+  # kubernetes.gke definido em providers.tf
+  ############################################
+  providers = {
+    kubernetes = kubernetes.gke
+  }
+
+  # rótulos comuns (opcional)
 }
+# <-- fim do módulo k8s_bootstrap

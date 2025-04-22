@@ -1,11 +1,9 @@
-provider "google" {
-  project     = var.gcp_project_id
-  region      = var.gcp_region
-  zone        = var.gcp_zone
-  credentials = base64decode(var.gcp_sa_credentials_b64)
-}
+# iac/providers.tf  (ou no topo de iac/main.tf)
+data "google_client_config" "default" {}
 
-provider "databricks" {
-  host  = var.databricks_host
-  token = var.databricks_token
+provider "kubernetes" {
+  alias                  = "gke"
+  host                   = module.gke.endpoint
+  token                  = data.google_client_config.default.access_token
+  cluster_ca_certificate = base64decode(module.gke.cluster_ca_certificate)
 }
