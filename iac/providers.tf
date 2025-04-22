@@ -1,25 +1,38 @@
-variable "gcp_credentials" {
-  type        = string
-  description = "Conteúdo JSON da conta de serviço (HCL string)"
-  sensitive   = true
+terraform {
+  required_version = ">= 1.4"
+
+  required_providers {
+    google = {
+      source  = "hashicorp/google"
+      version = ">= 5.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = ">= 2.27"
+    }
+  }
 }
 
-
-###############################################################################
-# Provider GOOGLE (default) – usado em todos os módulos
-###############################################################################
+############################################################
+# GOOGLE – usa o JSON passado na variável gcp_credentials
+############################################################
 provider "google" {
   project     = var.gcp_project_id
   region      = var.gcp_region
-  credentials = var.gcp_credentials           # <-- obrigatório no TFC
+  credentials = var.gcp_credentials
 }
 
-###############################################################################
-# Provider KUBERNETES (alias = gke)  – apontando para o cluster criado
-###############################################################################
+# Pega o access‑token da conta que o provider google está usando
+data "google_client_config" "default" {}
+
+############################################################
+# KUBERNETES – configuração específica do cluster GKE
+# (note o alias "gke")
+############################################################
 provider "kubernetes" {
-  alias           = "gke"
-  host            = module.gke.endpoint
-  cluster_ca_certificate = base64decode(module.gke.ca_certificate)
-  token           = module.gke.token
+  alias                  = "gke"
+
+  host                   = module.gke.host
+  cluster_ca_certificate = base64decode(module.gke.cluster_ca_certificate)
+  token                  = data.google_client_config.default.access_token
 }
