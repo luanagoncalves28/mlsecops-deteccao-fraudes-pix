@@ -77,3 +77,13 @@ module "gke" {
     product = "mlsecpix"
   }
 }
+
+###############################################################################
+# 4. Módulo de Bootstrap do cluster (namespaces + Workload Identity)
+###############################################################################
+module "k8s_bootstrap" {
+  source     = "./modules/k8s_bootstrap"
+
+  project_id = var.gcp_project_id
+  region     = var.gcp_region
+}
