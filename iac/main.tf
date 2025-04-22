@@ -79,11 +79,12 @@ module "gke" {
 }
 
 ###############################################################################
-# 4. Módulo de Bootstrap do cluster (namespaces + Workload Identity)
+# 4.  Módulo de bootstrap – namespaces + Workload Identity
 ###############################################################################
-module "k8s_bootstrap" {
-  source     = "./modules/k8s_bootstrap"
 
-  project_id = var.gcp_project_id
-  region     = var.gcp_region
+module "k8s_bootstrap" {
+  source = "../modules/k8s_bootstrap"   # <- caminho correto do módulo local
+
+  project_id = var.gcp_project_id       # passa o ID do projeto
+  region     = var.gcp_region           # mesma região usada no cluster
 }
