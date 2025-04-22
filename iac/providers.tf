@@ -14,7 +14,8 @@ terraform {
 provider "google" {
   project     = var.gcp_project_id
   region      = var.gcp_region
-  credentials = var.gcp_credentials  # ← JSON puro
+  zone        = var.gcp_zone
+  credentials = var.gcp_credentials
 }
 
 data "google_client_config" "default" {}
