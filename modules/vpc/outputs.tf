@@ -1,7 +1,10 @@
-output "network_name" {
-  value = google_compute_network.vpc.name
+# modules/vpc/outputs.tf
+output "network" {
+  description = "Self‑link da VPC (para outros módulos)"
+  value       = google_compute_network.vpc.self_link
 }
 
-output "subnet_name" {
-  value = google_compute_subnetwork.subnet.name
+output "subnet" {
+  description = "Self‑link da sub‑rede padrão"
+  value       = google_compute_subnetwork.subnet.self_link
 }
