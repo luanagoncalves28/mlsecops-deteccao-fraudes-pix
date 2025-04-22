@@ -70,8 +70,8 @@ module "gke" {
   region      = var.gcp_region
   environment = var.environment
 
-network = module.vpc.network   # self_link da rede
-subnet  = module.vpc.subnet    # self_link da sub‑rede
+ network = module.vpc.network   # self_link da rede
+ subnet  = module.vpc.subnet    # self_link da sub‑rede
 
   labels = {
     product = "mlsecpix"
