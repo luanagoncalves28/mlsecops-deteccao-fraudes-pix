@@ -44,3 +44,18 @@ module "storage" {
 }
 
 # EOF
+
+###############################################################################
+# 3. Módulo de IAM – Service Accounts + RBAC
+###############################################################################
+module "iam" {
+  source      = "../modules/iam"
+
+  project_id  = var.gcp_project_id
+  region      = var.gcp_region
+  environment = var.environment
+
+  labels = {
+    product = "mlsecpix"
+  }
+}
