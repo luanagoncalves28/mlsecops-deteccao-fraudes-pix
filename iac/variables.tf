@@ -16,10 +16,8 @@ variable "environment" {
   type        = string
 }
 
-# JSON da service‑account **inteiro** (não base64) —
-# será injetado no provider google
 variable "gcp_credentials" {
-  description = "Credenciais da service‑account em formato JSON"
+  description = "JSON da Service Account (com quebras de linha \\n no campo private_key)"
   type        = string
   sensitive   = true
 }
