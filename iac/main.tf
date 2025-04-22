@@ -1,31 +1,31 @@
-##############################################
-# Root – orquestração de módulos de infraestrutura
-##############################################
+###############################################################
+#  Root – orquestração dos módulos de infraestrutura
+###############################################################
 
 terraform {
   required_version = ">= 1.5"
 }
 
-##############################################
-# 1. Módulo de VPC  (já existente)
-##############################################
+###############################################################
+# 1. Módulo de VPC (já aplicado no run INFRA‑001)
+###############################################################
 module "vpc" {
-  source      = "./modules/vpc"
+  source = "../modules/vpc"
 
-  project_id  = var.gcp_project_id
-  region      = var.gcp_region
-  environment = var.environment
+  project_id   = var.gcp_project_id
+  region       = var.gcp_region
+  environment  = var.environment
 
-  labels = {
-    product = "mlsecpix"
-  }
+  # >>> parâmetros obrigatórios do módulo
+  network_name = "mlsecpix-${var.environment}-vpc"
+  subnet_cidr  = "10.10.0.0/24"
 }
 
-##############################################
-# 2. Módulo de Storage (data‑lake + auditoria)
-##############################################
+###############################################################
+# 2. Módulo de Storage (data‑lake + buckets de auditoria)
+###############################################################
 module "storage" {
-  source      = "./modules/storage"
+  source = "../modules/storage"
 
   project_id  = var.gcp_project_id
   region      = var.gcp_region
@@ -35,10 +35,12 @@ module "storage" {
     product = "mlsecpix"
   }
 
-  # — opcional: sobrescreva retenções padrão aqui se quiser —
+  # Descomente p/ sobrescrever retenções padrão
   # retention_bronze_days = 90
   # retention_silver_days = 365
   # retention_gold_days   = 0
   # retention_audit_hot   = 30
   # retention_audit_cold  = 365
 }
+
+# EOF
