@@ -1,21 +1,15 @@
 ###############################################################################
-# outputs.tf  – Storage module
+# outputs.tf  – módulo Storage
 ###############################################################################
 
-# Lista com TODOS os buckets criados (tiers + audit)
+# Lista com todos os buckets de dados + auditoria
 output "bucket_names" {
-  description = "Nomes dos buckets de dados (bronze/silver/gold) e auditoria."
+  description = "Nomes dos buckets (bronze/silver/gold + audit)."
   value = concat(
-    [ for b in google_storage_bucket.tier : b.name ],           # lista
-    [ google_storage_bucket.audit_hot.name ],                   # string → lista
-    [ google_storage_bucket.audit_cold.name ]                   # string → lista
+    [ for b in values(google_storage_bucket.tiers) : b.name ],   # << aqui plural
+    [ google_storage_bucket.audit_hot.name ],
+    [ google_storage_bucket.audit_cold.name ]
   )
-}
-
-# URL do bucket‑canary criado no root
-output "canary_bucket_url" {
-  description = "URL do bucket tf_canary criado fora do módulo – root."
-  value       = google_storage_bucket.tf_canary.url
 }
 
 # EOF
