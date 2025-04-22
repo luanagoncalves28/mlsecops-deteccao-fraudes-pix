@@ -4,8 +4,6 @@ variable "gcp_credentials" {
   sensitive   = true
 }
 
-variable "gcp_project_id"  { type = string }
-variable "gcp_region"      { type = string }
 
 ###############################################################################
 # Provider GOOGLE (default) – usado em todos os módulos
