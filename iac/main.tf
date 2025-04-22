@@ -59,3 +59,21 @@ module "iam" {
     product = "mlsecpix"
   }
 }
+
+################################################################################
+# 3. Módulo de GKE – cluster autopilot para workloads de ML/serving
+################################################################################
+module "gke" {
+  source = "../modules/gke"
+
+  project_id  = var.gcp_project_id
+  region      = var.gcp_region
+  environment = var.environment
+
+  network = module.vpc.network_name   # output do módulo vpc
+  subnet  = module.vpc.subnet_name    # output do módulo vpc
+
+  labels = {
+    product = "mlsecpix"
+  }
+}
