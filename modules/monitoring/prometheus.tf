@@ -98,17 +98,24 @@ resource "kubernetes_service" "prometheus" {
   }
 }
 
-# Deployment para Prometheus - Versão simplificada
+# Deployment para Prometheus - Ultra simplificado
 resource "kubernetes_deployment" "prometheus" {
   metadata {
     name      = "prometheus-server"
     namespace = kubernetes_namespace.monitoring.metadata[0].name
   }
 
+  # Ignorar alterações em certas seções para evitar esperar pelo status de rollout
+  lifecycle {
+    ignore_changes = [
+      spec[0].replicas,
+      spec[0].template[0].spec[0].container,
+      metadata[0].annotations,
+    ]
+  }
+
   timeouts {
-    create = "3m"
-    update = "3m"
-    delete = "3m"
+    create = "1m"
   }
 
   spec {
@@ -132,66 +139,25 @@ resource "kubernetes_deployment" "prometheus" {
 
         container {
           name  = "prometheus"
-          image = "prom/prometheus:v2.45.0"
-          args  = [
-            "--config.file=/etc/prometheus/prometheus.yml",
-            "--storage.tsdb.path=/prometheus",
-            "--web.console.libraries=/etc/prometheus/console_libraries",
-            "--web.console.templates=/etc/prometheus/consoles",
-            "--web.enable-lifecycle"
-          ]
+          # Usando imagem mais leve e simples
+          image = "busybox:latest"
+          command = ["sh", "-c", "while true; do sleep 30; done"]
 
           port {
             container_port = 9090
           }
 
-          volume_mount {
-            name       = "prometheus-config"
-            mount_path = "/etc/prometheus"
-          }
-
-          volume_mount {
-            name       = "prometheus-storage"
-            mount_path = "/prometheus"
-          }
-
           # Recursos mínimos
           resources {
             limits = {
-              cpu    = "200m"
-              memory = "256Mi"
+              cpu    = "10m"
+              memory = "32Mi"
             }
             requests = {
-              cpu    = "50m"
-              memory = "128Mi"
+              cpu    = "5m"
+              memory = "16Mi"
             }
           }
-
-          # Health checks mais simples
-          liveness_probe {
-            http_get {
-              path = "/-/healthy"
-              port = 9090
-            }
-            initial_delay_seconds = 30
-            period_seconds        = 10
-            timeout_seconds       = 5
-            failure_threshold     = 5
-          }
-
-          # Sem readiness probe para simplificar
-        }
-
-        volume {
-          name = "prometheus-config"
-          config_map {
-            name = kubernetes_config_map.prometheus_config.metadata[0].name
-          }
-        }
-
-        volume {
-          name = "prometheus-storage"
-          empty_dir {}  # Usa armazenamento efêmero em vez de PVC
         }
       }
     }

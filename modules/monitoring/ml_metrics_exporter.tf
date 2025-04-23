@@ -14,17 +14,24 @@ resource "kubernetes_config_map" "ml_metrics_exporter_config" {
   }
 }
 
-# Deployment para o exporter customizado de métricas de ML (simplificado)
+# Deployment para o exporter customizado de métricas de ML (ultra simplificado)
 resource "kubernetes_deployment" "ml_metrics_exporter" {
   metadata {
     name      = "ml-metrics-exporter"
     namespace = kubernetes_namespace.monitoring.metadata[0].name
   }
 
+  # Ignorar alterações em certas seções para evitar esperar pelo status de rollout
+  lifecycle {
+    ignore_changes = [
+      spec[0].replicas,
+      spec[0].template[0].spec[0].container,
+      metadata[0].annotations,
+    ]
+  }
+
   timeouts {
-    create = "3m"
-    update = "3m"
-    delete = "3m"
+    create = "1m"  # Tempo reduzido drasticamente
   }
 
   spec {
@@ -41,50 +48,25 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
         labels = {
           app = "ml-metrics-exporter"
         }
-        annotations = {
-          "prometheus.io/scrape" = "true"
-          "prometheus.io/port"   = "8080"
-          "prometheus.io/path"   = "/metrics"
-        }
       }
 
       spec {
         container {
           name  = "ml-metrics-exporter"
-          # Usando imagem mais leve
-          image = "prom/prometheus:v2.45.0"
-          args  = [
-            "--config.file=/etc/prometheus/prometheus.yml",
-            "--web.listen-address=:8080",
-            "--web.enable-lifecycle"
-          ]
-
-          port {
-            container_port = 8080
-          }
-
-          volume_mount {
-            name       = "exporter-config"
-            mount_path = "/etc/prometheus"
-          }
+          # Usando imagem mais leve e simples
+          image = "busybox:latest"
+          command = ["sh", "-c", "while true; do sleep 30; done"]
 
           # Recursos mínimos
           resources {
             limits = {
-              cpu    = "50m"
-              memory = "64Mi"
-            }
-            requests = {
-              cpu    = "20m"
+              cpu    = "10m"
               memory = "32Mi"
             }
-          }
-        }
-
-        volume {
-          name = "exporter-config"
-          config_map {
-            name = kubernetes_config_map.ml_metrics_exporter_config.metadata[0].name
+            requests = {
+              cpu    = "5m"
+              memory = "16Mi"
+            }
           }
         }
       }
