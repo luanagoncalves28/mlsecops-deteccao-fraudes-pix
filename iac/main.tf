@@ -93,3 +93,30 @@ module "k8s_bootstrap" {
     kubernetes = kubernetes.gke
   }
 }
+
+###############################################################################
+# 6. Módulo de Monitoramento - Prometheus e Grafana para observabilidade
+###############################################################################
+module "monitoring" {
+  source = "../modules/monitoring"
+
+  project_id  = var.gcp_project_id
+  region      = var.gcp_region
+  environment = var.environment
+  
+  # Obtém o nome do cluster do módulo GKE
+  cluster_name = module.gke.cluster_name
+  
+  # Configurações específicas de monitoramento
+  prometheus_namespace   = "monitoring"
+  grafana_admin_password = "MLSecOps@2025"  # Em produção, use um secret gerenciado
+  retention_days         = 15
+  storage_size           = "10Gi"
+  
+  labels = {
+    product = "mlsecpix"
+  }
+
+  # Depende do módulo k8s_bootstrap para garantir que o cluster esteja configurado primeiro
+  depends_on = [module.k8s_bootstrap]
+}
