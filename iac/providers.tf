@@ -28,12 +28,17 @@ data "google_client_config" "default" {}
 
 ############################################################
 # KUBERNETES – configuração específica do cluster GKE
-# (note o alias "gke")
 ############################################################
 provider "kubernetes" {
-  alias                  = "gke"
+  host                   = "https://${module.gke.host}"
+  cluster_ca_certificate = base64decode(module.gke.cluster_ca_certificate)
+  token                  = data.google_client_config.default.access_token
+}
 
-  host                   = module.gke.host
+# Alias para o provider kubernetes para módulos específicos
+provider "kubernetes" {
+  alias                  = "gke"
+  host                   = "https://${module.gke.host}"
   cluster_ca_certificate = base64decode(module.gke.cluster_ca_certificate)
   token                  = data.google_client_config.default.access_token
 }

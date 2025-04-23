@@ -104,7 +104,7 @@ module "monitoring" {
   region      = var.gcp_region
   environment = var.environment
   
-  # Usando a nova saída do módulo GKE
+  # Usando a saída do módulo GKE
   cluster_name = module.gke.name
   
   prometheus_namespace   = "monitoring"
@@ -116,5 +116,14 @@ module "monitoring" {
     product = "mlsecpix"
   }
 
-  depends_on = [module.k8s_bootstrap]
+  # Dependências explícitas para garantir a ordem correta de criação
+  depends_on = [
+    module.gke,
+    module.k8s_bootstrap
+  ]
+
+  # Certifica-se de que o provider Kubernetes está configurado após o cluster estar disponível
+  providers = {
+    kubernetes = kubernetes
+  }
 }
