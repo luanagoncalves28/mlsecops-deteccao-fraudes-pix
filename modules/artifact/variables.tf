@@ -19,6 +19,12 @@ variable "repository_id" {
   default     = "mlsecpix-images"
 }
 
+variable "enable_cloudbuild_trigger" {
+  description = "Flag para controlar se o trigger do Cloud Build deve ser criado"
+  type        = bool
+  default     = false
+}
+
 variable "labels" {
   description = "Labels a serem aplicados nos recursos"
   type        = map(string)

@@ -39,13 +39,13 @@ variable "databricks_job_name" {
 variable "spark_version" {
   description = "Versão do Spark a ser utilizada no cluster"
   type        = string
-  default     = "11.3.x-scala2.12" # LTS version
+  default     = "11.3.x-scala2.12"
 }
 
 variable "node_type_id" {
   description = "Tipo de instância para os nodes do cluster"
   type        = string
-  default     = "n1-standard-4" # Ou equivalente no GCP
+  default     = "n1-standard-4"
 }
 
 variable "autoscale_min_workers" {
@@ -58,6 +58,12 @@ variable "autoscale_max_workers" {
   description = "Número máximo de workers no autoscaling"
   type        = number
   default     = 4
+}
+
+variable "enable_databricks_resources" {
+  description = "Flag para controlar se os recursos Databricks devem ser criados"
+  type        = bool
+  default     = false
 }
 
 variable "labels" {

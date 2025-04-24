@@ -141,15 +141,12 @@ module "artifact" {
   # Nome do repositório do Artifact Registry
   repository_id = "mlsecpix-images"
   
+  # Desabilitar a criação do trigger do Cloud Build até que a API esteja habilitada
+  enable_cloudbuild_trigger = false
+  
   labels = {
     product = "mlsecpix"
   }
-  
-  # Dependências explícitas
-  depends_on = [
-    module.storage,
-    module.gke
-  ]
 }
 
 ###############################################################################
@@ -166,6 +163,9 @@ module "databricks" {
   databricks_host  = var.databricks_host
   databricks_token = var.databricks_token
   
+  # Desabilitar a criação de recursos Databricks até que a conta esteja ativa
+  enable_databricks_resources = false
+  
   # Configurações dos recursos
   databricks_cluster_name = "mlsecpix-data-cluster"
   databricks_job_name     = "mlsecpix-training-job"
@@ -179,6 +179,4 @@ module "databricks" {
   labels = {
     product = "mlsecpix"
   }
-  
-  # Removido o depends_on que estava causando o erro
 }

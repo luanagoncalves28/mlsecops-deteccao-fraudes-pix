@@ -58,6 +58,7 @@ resource "google_project_iam_member" "cloudbuild_storage" {
 
 # Configurando um trigger básico para Cloud Build (opcional)
 resource "google_cloudbuild_trigger" "ml_model_build" {
+  count       = var.enable_cloudbuild_trigger ? 1 : 0  # Torna o recurso condicional
   project     = var.project_id
   name        = "mlsecpix-${var.environment}-model-build"
   description = "Trigger para build das imagens de ML para MLSecPix"
@@ -81,9 +82,6 @@ resource "google_cloudbuild_trigger" "ml_model_build" {
     _REGION      = var.region
   }
   
-  # Comentado para evitar erros na aplicação inicial
-  # Para ativar, descomente e ajuste os valores
-  # Você precisará criar o repositório GitHub primeiro
-  ignored_files = ["**/*.md", "docs/**"]
+  # Desativado por padrão
   disabled = true
 }

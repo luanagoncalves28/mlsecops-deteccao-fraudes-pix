@@ -3,27 +3,17 @@ output "databricks_host" {
   value       = var.databricks_host
 }
 
-output "cluster_id" {
-  description = "ID do cluster Databricks criado"
-  value       = databricks_cluster.data_processing.id
-}
-
-output "job_id" {
-  description = "ID do job Databricks criado"
-  value       = databricks_job.training_job.id
-}
-
 output "notebook_path" {
   description = "Caminho do notebook de testes no Databricks"
-  value       = databricks_notebook.test_notebook.path
+  value       = length(databricks_notebook.test_notebook) > 0 ? databricks_notebook.test_notebook[0].path : "Notebook não criado"
 }
 
 output "data_scientists_group" {
   description = "Nome do grupo de cientistas de dados"
-  value       = databricks_group.data_scientists.display_name
+  value       = length(databricks_group.data_scientists) > 0 ? databricks_group.data_scientists[0].display_name : "Grupo não criado"
 }
 
 output "ml_engineers_group" {
   description = "Nome do grupo de engenheiros de ML"
-  value       = databricks_group.ml_engineers.display_name
+  value       = length(databricks_group.ml_engineers) > 0 ? databricks_group.ml_engineers[0].display_name : "Grupo não criado"
 }
