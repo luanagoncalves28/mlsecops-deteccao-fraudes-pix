@@ -9,8 +9,6 @@ locals {
   })
 }
 
-# Removido o provider local
-
 # Cluster para processamento de dados e desenvolvimento
 resource "databricks_cluster" "data_processing" {
   cluster_name            = local.cluster_name
@@ -31,14 +29,9 @@ resource "databricks_cluster" "data_processing" {
   custom_tags = local.common_tags
 }
 
-# Pasta para notebooks
-resource "databricks_notebook_directory" "mlsecpix_notebooks" {
-  path = "/MLSecPix"
-}
-
-# Notebook para testes iniciais
+# Notebook para testes iniciais - usando diretamente, sem criar o diretório
 resource "databricks_notebook" "test_notebook" {
-  path     = "${databricks_notebook_directory.mlsecpix_notebooks.path}/teste_conexao_gcp"
+  path     = "/MLSecPix/teste_conexao_gcp"  # Inclui o diretório no path
   language = "PYTHON"
   
   content_base64 = base64encode(<<-EOT
@@ -78,15 +71,11 @@ resource "databricks_job" "training_job" {
     spark_version = var.spark_version
     node_type_id  = var.node_type_id
     num_workers   = 2
-    # Nota: autotermination_minutes não é um parâmetro válido para new_cluster no contexto de jobs
   }
   
-  # Usando task para o notebook, não notebook_task
-  task {
-    task_key = "training_task"
-    notebook_task {
-      notebook_path = databricks_notebook.test_notebook.path
-    }
+  # Usando o formato correto para a tarefa do notebook
+  notebook_task {
+    notebook_path = databricks_notebook.test_notebook.path
   }
   
   schedule {
@@ -99,12 +88,10 @@ resource "databricks_job" "training_job" {
     on_failure = []
   }
   
-  # Usado o formato correto para pausar o job
-  format = "MULTI_TASK"
-  
   max_concurrent_runs = 1
   
-  tags = local.common_tags
+  # Usando custom_tags como um mapa (não como um bloco)
+  # Removido o bloco tags que estava causando o erro
 }
 
 # Configuração de Secret Scope para guardar credenciais do GCP
@@ -123,8 +110,8 @@ resource "databricks_group" "ml_engineers" {
   display_name = "MLSecPix ML Engineers"
 }
 
-# Permissões para o workspace
-resource "databricks_permissions" "notebook_usage_perm" {
+# Permissões para o notebook
+resource "databricks_permissions" "notebook_usage" {
   notebook_path = databricks_notebook.test_notebook.path
   
   access_control {
@@ -136,4 +123,4 @@ resource "databricks_permissions" "notebook_usage_perm" {
     group_name       = databricks_group.ml_engineers.display_name
     permission_level = "CAN_RUN"
   }
-} 
+}
