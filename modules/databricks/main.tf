@@ -9,11 +9,7 @@ locals {
   })
 }
 
-# Configuração do provider Databricks
-provider "databricks" {
-  host  = var.databricks_host
-  token = var.databricks_token
-}
+# Removido o provider local
 
 # Cluster para processamento de dados e desenvolvimento
 resource "databricks_cluster" "data_processing" {
@@ -140,4 +136,4 @@ resource "databricks_permissions" "notebook_usage_perm" {
     group_name       = databricks_group.ml_engineers.display_name
     permission_level = "CAN_RUN"
   }
-}
+} 

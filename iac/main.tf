@@ -180,9 +180,5 @@ module "databricks" {
     product = "mlsecpix"
   }
   
-  # Dependências explícitas
-  depends_on = [
-    module.storage,
-    module.artifact
-  ]
+  # Removido o depends_on que estava causando o erro
 }

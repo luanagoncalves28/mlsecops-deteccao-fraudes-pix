@@ -6,3 +6,13 @@ terraform {
     }
   }
 }
+
+# Adicione isso ao arquivo iac/providers.tf existente
+
+############################################################
+# DATABRICKS – usa o token para autenticação
+############################################################
+provider "databricks" {
+  host  = var.databricks_host
+  token = var.databricks_token
+}
