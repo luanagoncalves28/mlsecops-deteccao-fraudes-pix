@@ -98,27 +98,34 @@ resource "kubernetes_service" "prometheus" {
   }
 }
 
-# Deployment para Prometheus - Ultra simplificado
+# Deployment para Prometheus - Recriação completa para resolver problemas de volume
 resource "kubernetes_deployment" "prometheus" {
   metadata {
     name      = "prometheus-server"
     namespace = kubernetes_namespace.monitoring.metadata[0].name
+    
+    # Adiciona um timestamp para forçar a recriação a cada apply
+    annotations = {
+      "recreate-trigger" = "${timestamp()}"
+    }
   }
 
-  # Ignorar alterações em certas seções para evitar esperar pelo status de rollout
+  # Força a substituição do recurso em vez de tentar atualizá-lo
   lifecycle {
-    ignore_changes = [
-      spec[0].replicas,
-      spec[0].template[0].spec[0].container,
-      metadata[0].annotations,
-    ]
+    create_before_destroy = true
   }
 
+  # Reduza o timeout para evitar esperar muito tempo pela criação
   timeouts {
-    create = "1m"
+    create = "30s"
   }
 
   spec {
+    # Estratégia de atualização "Recreate" em vez de "RollingUpdate"
+    strategy {
+      type = "Recreate"
+    }
+    
     replicas = 1
 
     selector {
@@ -132,16 +139,23 @@ resource "kubernetes_deployment" "prometheus" {
         labels = {
           app = "prometheus-server"
         }
+        
+        # Adiciona um timestamp como anotação para forçar a recriação do pod
+        annotations = {
+          "recreate-trigger" = "${timestamp()}"
+        }
       }
 
       spec {
         service_account_name = kubernetes_service_account.prometheus.metadata[0].name
+        
+        termination_grace_period_seconds = 10
 
         container {
           name  = "prometheus"
-          # Usando imagem mais leve e simples
-          image = "busybox:latest"
-          command = ["sh", "-c", "while true; do sleep 30; done"]
+          # Usa uma imagem extremamente leve
+          image = "busybox:1.36"
+          command = ["sh", "-c", "echo 'Prometheus placeholder container'; sleep infinity"]
 
           port {
             container_port = 9090
