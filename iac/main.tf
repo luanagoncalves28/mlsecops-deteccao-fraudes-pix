@@ -127,3 +127,62 @@ module "monitoring" {
     kubernetes = kubernetes
   }
 }
+
+###############################################################################
+# 7. Módulo de Pipeline de Imagens - Artifact Registry + Cloud Build
+###############################################################################
+module "artifact" {
+  source = "../modules/artifact"
+
+  project_id  = var.gcp_project_id
+  region      = var.gcp_region
+  environment = var.environment
+  
+  # Nome do repositório do Artifact Registry
+  repository_id = "mlsecpix-images"
+  
+  labels = {
+    product = "mlsecpix"
+  }
+  
+  # Dependências explícitas
+  depends_on = [
+    module.storage,
+    module.gke
+  ]
+}
+
+###############################################################################
+# 8. Módulo Databricks - Workspace, Clusters e Jobs para ML
+###############################################################################
+module "databricks" {
+  source = "../modules/databricks"
+
+  project_id  = var.gcp_project_id
+  region      = var.gcp_region
+  environment = var.environment
+  
+  # Conexão com o Databricks
+  databricks_host  = var.databricks_host
+  databricks_token = var.databricks_token
+  
+  # Configurações dos recursos
+  databricks_cluster_name = "mlsecpix-data-cluster"
+  databricks_job_name     = "mlsecpix-training-job"
+  
+  # Configurações do cluster
+  spark_version         = "11.3.x-scala2.12"
+  node_type_id          = "n1-standard-4"
+  autoscale_min_workers = 1
+  autoscale_max_workers = 4
+  
+  labels = {
+    product = "mlsecpix"
+  }
+  
+  # Dependências explícitas
+  depends_on = [
+    module.storage,
+    module.artifact
+  ]
+}
