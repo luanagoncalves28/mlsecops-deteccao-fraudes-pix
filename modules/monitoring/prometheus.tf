@@ -158,8 +158,6 @@ resource "kubernetes_deployment" "prometheus" {
               memory = "16Mi"
             }
           }
-          
-          # Removendo as referências aos volumeMounts que estavam causando o erro
         }
       }
     }

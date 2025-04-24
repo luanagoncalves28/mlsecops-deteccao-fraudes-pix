@@ -57,6 +57,10 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
           image = "busybox:latest"
           command = ["sh", "-c", "while true; do sleep 30; done"]
 
+          port {
+            container_port = 8080
+          }
+
           # Recursos mínimos
           resources {
             limits = {
@@ -68,8 +72,6 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
               memory = "16Mi"
             }
           }
-          
-          # Removendo as referências aos volumeMounts que estavam causando o erro
         }
       }
     }
