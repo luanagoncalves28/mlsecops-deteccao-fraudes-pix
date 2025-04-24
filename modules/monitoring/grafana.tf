@@ -137,6 +137,8 @@ resource "kubernetes_deployment" "grafana" {
               memory = "16Mi"
             }
           }
+          
+          # Removendo as referências aos volumeMounts que estavam causando o erro
         }
       }
     }

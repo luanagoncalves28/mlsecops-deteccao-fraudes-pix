@@ -68,6 +68,8 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
               memory = "16Mi"
             }
           }
+          
+          # Removendo as referências aos volumeMounts que estavam causando o erro
         }
       }
     }
