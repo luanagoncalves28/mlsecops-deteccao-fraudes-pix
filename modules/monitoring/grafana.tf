@@ -78,34 +78,27 @@ resource "kubernetes_service" "grafana_nodeport" {
   }
 }
 
-# Deployment para Grafana - Recriação completa para resolver problemas de volume
+# Deployment para Grafana - Versão minimalista
 resource "kubernetes_deployment" "grafana" {
   metadata {
     name      = "grafana"
     namespace = kubernetes_namespace.monitoring.metadata[0].name
     
-    # Adiciona um timestamp para forçar a recriação a cada apply
+    # Versão estática para controlar a atualização
     annotations = {
-      "recreate-trigger" = "${timestamp()}"
+      "deployment-version" = "v1-minimal"
     }
   }
   
-  # Força a substituição do recurso em vez de tentar atualizá-lo
+  # Força uma destruição antes de tentar recriar
   lifecycle {
-    create_before_destroy = true
-  }
-
-  # Reduza o timeout para evitar esperar muito tempo pela criação
-  timeouts {
-    create = "30s"
+    replace_triggered_by = [
+      # Usando o hash do namespace como trigger para substituição
+      kubernetes_namespace.monitoring.metadata[0].name
+    ]
   }
 
   spec {
-    # Estratégia de atualização "Recreate" em vez de "RollingUpdate"
-    strategy {
-      type = "Recreate"
-    }
-    
     replicas = 1
 
     selector {
@@ -119,28 +112,22 @@ resource "kubernetes_deployment" "grafana" {
         labels = {
           app = "grafana"
         }
-        
-        # Adiciona um timestamp como anotação para forçar a recriação do pod
-        annotations = {
-          "recreate-trigger" = "${timestamp()}"
-        }
       }
 
       spec {
-        termination_grace_period_seconds = 10
+        # Configurando terminação rápida
+        termination_grace_period_seconds = 5
 
         container {
           name  = "grafana"
-          # Usa uma imagem extremamente leve
           image = "busybox:1.36"
-          command = ["sh", "-c", "echo 'Grafana placeholder container'; sleep infinity"]
+          command = ["sh", "-c", "while true; do sleep 3600; done"]
 
           port {
             container_port = 3000
             name           = "http"
           }
 
-          # Recursos mínimos
           resources {
             limits = {
               cpu    = "10m"
