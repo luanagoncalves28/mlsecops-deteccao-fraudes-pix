@@ -1,8 +1,8 @@
 terraform {
   cloud {
-    organization = "tf-mlsecpix-org"
+    organization = "tf-org-mlsecpix"
     workspaces {
-      name = "mlsecpix-dev"
+      name = "mlsecops-deteccao-fraudes-pix"
     }
   }
 }
