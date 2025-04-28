@@ -1,4 +1,4 @@
-# ConfigMap para configuração do Grafana - trigger redeploy grafana services
+# ConfigMap para configuração do Grafana 
 resource "kubernetes_config_map" "grafana_config" {
   metadata {
     name      = "grafana-config"
