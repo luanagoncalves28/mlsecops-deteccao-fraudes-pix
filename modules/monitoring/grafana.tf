@@ -33,7 +33,7 @@ resource "kubernetes_secret" "grafana_credentials" {
   type = "Opaque"
 }
 
-# Service para Grafana
+# Service interno para Grafana
 resource "kubernetes_service" "grafana" {
   metadata {
     name      = "grafana"
@@ -55,7 +55,7 @@ resource "kubernetes_service" "grafana" {
   }
 }
 
-# Cria um serviço NodePort para expor Grafana externamente (para demonstração)
+# Service externo (NodePort) para acessar Grafana externamente
 resource "kubernetes_service" "grafana_nodeport" {
   metadata {
     name      = "grafana-external"
@@ -78,22 +78,18 @@ resource "kubernetes_service" "grafana_nodeport" {
   }
 }
 
-# Deployment para Grafana - Versão minimalista
+# Deployment real para Grafana
 resource "kubernetes_deployment" "grafana" {
   metadata {
     name      = "grafana"
     namespace = kubernetes_namespace.monitoring.metadata[0].name
-    
-    # Versão estática para controlar a atualização
     annotations = {
-      "deployment-version" = "v1-minimal"
+      "deployment-version" = "v1" # Controla atualização manual
     }
   }
-  
-  # Força uma destruição antes de tentar recriar
+
   lifecycle {
     replace_triggered_by = [
-      # Usando o hash do namespace como trigger para substituição
       kubernetes_namespace.monitoring.metadata[0].name
     ]
   }
@@ -115,13 +111,31 @@ resource "kubernetes_deployment" "grafana" {
       }
 
       spec {
-        # Configurando terminação rápida
         termination_grace_period_seconds = 5
 
         container {
           name  = "grafana"
-          image = "busybox:1.36"
-          command = ["sh", "-c", "while true; do sleep 3600; done"]
+          image = "grafana/grafana:10.0.3" # imagem REAL da Grafana estável
+
+          env {
+            name  = "GF_SECURITY_ADMIN_USER"
+            value = "admin"
+          }
+
+          env {
+            name  = "GF_SECURITY_ADMIN_PASSWORD"
+            value_from {
+              secret_key_ref {
+                name = kubernetes_secret.grafana_credentials.metadata[0].name
+                key  = "admin-password"
+              }
+            }
+          }
+
+          volume_mount {
+            name       = "grafana-config-volume"
+            mount_path = "/etc/grafana/provisioning/datasources"
+          }
 
           port {
             container_port = 3000
@@ -130,13 +144,21 @@ resource "kubernetes_deployment" "grafana" {
 
           resources {
             limits = {
-              cpu    = "10m"
-              memory = "32Mi"
+              cpu    = "200m"
+              memory = "512Mi"
             }
             requests = {
-              cpu    = "5m"
-              memory = "16Mi"
+              cpu    = "100m"
+              memory = "256Mi"
             }
+          }
+        }
+
+        volume {
+          name = "grafana-config-volume"
+
+          config_map {
+            name = kubernetes_config_map.grafana_config.metadata[0].name
           }
         }
       }
