@@ -49,7 +49,7 @@ resource "kubernetes_cluster_role_binding" "prometheus" {
   }
 }
 
-# ConfigMap para configuração do Prometheus
+# ConfigMap com a configuração do Prometheus
 resource "kubernetes_config_map" "prometheus_config" {
   metadata {
     name      = "prometheus-config"
@@ -57,10 +57,11 @@ resource "kubernetes_config_map" "prometheus_config" {
   }
 
   data = {
-    "prometheus.yml" = <<-EOF
+    "prometheus.yml" = <<-EOT
       global:
-        scrape_interval: 30s
-        evaluation_interval: 30s
+        scrape_interval: 15s
+        evaluation_interval: 15s
+
       scrape_configs:
         - job_name: 'prometheus'
           static_configs:
@@ -72,7 +73,7 @@ resource "kubernetes_config_map" "prometheus_config" {
             - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
               action: keep
               regex: true
-    EOF
+    EOT
   }
 }
 
@@ -98,24 +99,14 @@ resource "kubernetes_service" "prometheus" {
   }
 }
 
-# Deployment para Prometheus - Versão minimalista
+# Deployment para Prometheus com imagem funcional
 resource "kubernetes_deployment" "prometheus" {
   metadata {
     name      = "prometheus-server"
     namespace = kubernetes_namespace.monitoring.metadata[0].name
-    
-    # Versão estática para controlar a atualização
     annotations = {
-      "deployment-version" = "v1-minimal"
+      "deployment-version" = "v2-working"
     }
-  }
-
-  # Força uma destruição antes de tentar recriar
-  lifecycle {
-    replace_triggered_by = [
-      # Usando o hash do namespace como trigger para substituição
-      kubernetes_namespace.monitoring.metadata[0].name
-    ]
   }
 
   spec {
@@ -135,30 +126,44 @@ resource "kubernetes_deployment" "prometheus" {
       }
 
       spec {
-        service_account_name = kubernetes_service_account.prometheus.metadata[0].name
-        
-        # Configurando terminação rápida
-        termination_grace_period_seconds = 5
+        service_account_name               = kubernetes_service_account.prometheus.metadata[0].name
+        termination_grace_period_seconds  = 5
 
         container {
           name  = "prometheus"
-          image = "busybox:1.36"
-          command = ["sh", "-c", "while true; do sleep 3600; done"]
+          image = "prom/prometheus:v2.48.1"
+          args  = [
+            "--config.file=/etc/prometheus/prometheus.yml",
+            "--storage.tsdb.path=/prometheus"
+          ]
 
           port {
             container_port = 9090
           }
 
-          resources {
-            limits = {
-              cpu    = "10m"
-              memory = "32Mi"
-            }
-            requests = {
-              cpu    = "5m"
-              memory = "16Mi"
-            }
+          volume_mount {
+            name       = "config-volume"
+            mount_path = "/etc/prometheus"
           }
+
+          volume_mount {
+            name       = "prometheus-storage"
+            mount_path = "/prometheus"
+          }
+        }
+
+        volume {
+          name = "config-volume"
+
+          config_map {
+            name = kubernetes_config_map.prometheus_config.metadata[0].name
+          }
+        }
+
+        volume {
+          name = "prometheus-storage"
+
+          empty_dir {}
         }
       }
     }
