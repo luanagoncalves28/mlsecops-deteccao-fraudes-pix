@@ -55,3 +55,27 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
     }
   }
 }
+
+resource "kubernetes_service" "ml_metrics_exporter" {
+  metadata {
+    name      = "ml-metrics-exporter"
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    labels = {
+      app = "ml-metrics-exporter"
+    }
+  }
+
+  spec {
+    selector = {
+      app = "ml-metrics-exporter"
+    }
+
+    port {
+      name        = "http"
+      port        = 8080
+      target_port = 8080
+    }
+
+    type = "ClusterIP"
+  }
+}
