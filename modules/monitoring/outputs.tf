@@ -17,8 +17,3 @@ output "grafana_nodeport_url" {
   description = "URL para acessar o Grafana via NodePort (para demonstração)"
   value       = "http://<CLUSTER_IP>:30300"
 }
-
-output "ml_metrics_exporter_service" {
-  description = "Nome do serviço do exportador de métricas de ML"
-  value       = kubernetes_service.ml_metrics_exporter.metadata[0].name
-}

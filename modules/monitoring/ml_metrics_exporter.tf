@@ -23,9 +23,9 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
         }
 
         annotations = {
-          prometheus.io/scrape = "true"
-          prometheus.io/port   = "8080"
-          prometheus.io/path   = "/metrics"
+          "prometheus.io/scrape" = "true"
+          "prometheus.io/port"   = "8080"
+          "prometheus.io/path"   = "/metrics"
         }
       }
 
