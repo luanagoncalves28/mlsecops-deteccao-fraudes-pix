@@ -23,7 +23,9 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
         }
 
         annotations = {
-          "iam.gke.io/gcp-service-account" = "gke-ml-workload@mlsecpix-456600.iam.gserviceaccount.com"
+          prometheus.io/scrape = "true"
+          prometheus.io/port   = "8080"
+          prometheus.io/path   = "/metrics"
         }
       }
 
@@ -51,26 +53,5 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
         }
       }
     }
-  }
-}
-
-resource "kubernetes_service" "ml_metrics_exporter" {
-  metadata {
-    name      = "ml-metrics-exporter"
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
-  }
-
-  spec {
-    selector = {
-      app = "ml-metrics-exporter"
-    }
-
-    port {
-      port        = 8080
-      target_port = 8080
-      protocol    = "TCP"
-    }
-
-    type = "ClusterIP"
   }
 }
