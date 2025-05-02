@@ -66,6 +66,7 @@ resource "kubernetes_config_map" "prometheus_config" {
         - job_name: 'prometheus'
           static_configs:
             - targets: ['localhost:9090']
+
         - job_name: 'kubernetes-pods'
           kubernetes_sd_configs:
             - role: pod
@@ -73,6 +74,14 @@ resource "kubernetes_config_map" "prometheus_config" {
             - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
               action: keep
               regex: true
+
+        - job_name: 'ml-metrics-exporter'
+          kubernetes_sd_configs:
+            - role: endpoints
+          relabel_configs:
+            - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_namespace]
+              action: keep
+              regex: ml-metrics-exporter;monitoring
     EOT
   }
 }
