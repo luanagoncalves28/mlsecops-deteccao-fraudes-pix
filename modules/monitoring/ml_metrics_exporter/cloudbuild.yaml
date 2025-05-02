@@ -4,10 +4,7 @@ options:
 steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['build', '-t', 'gcr.io/mlsecpix-456600/ml-metrics-exporter:latest', '.']
-    dir: '.'
+    dir: 'modules/monitoring/ml_metrics_exporter'
 
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/mlsecpix-456600/ml-metrics-exporter:latest']
-
-images:
-  - 'gcr.io/mlsecpix-456600/ml-metrics-exporter:latest'
