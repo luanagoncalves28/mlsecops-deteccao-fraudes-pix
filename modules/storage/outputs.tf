@@ -13,3 +13,8 @@ output "bucket_names" {
 }
 
 # EOF
+
+output "cloudbuild_logs_bucket_name" {
+  description = "Nome do bucket de logs do Cloud Build"
+  value       = google_storage_bucket.cloudbuild_logs.name
+}

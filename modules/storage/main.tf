@@ -73,3 +73,23 @@ resource "google_storage_bucket" "audit_cold" {
     env  = var.environment
   })
 }
+
+##########################################
+# Bucket de logs do Cloud Build
+##########################################
+
+resource "google_storage_bucket" "cloudbuild_logs" {
+  name          = "mlsecpix-${var.environment}-cloudbuild-logs"
+  project       = var.project_id
+  location      = var.region
+  force_destroy = false
+  storage_class = "STANDARD"
+
+  uniform_bucket_level_access = true
+  versioning { enabled = false }
+
+  labels = merge(var.labels, {
+    purpose = "cloudbuild-logs"
+    env     = var.environment
+  })
+}
