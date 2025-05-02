@@ -2,15 +2,9 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
   metadata {
     name      = "ml-metrics-exporter"
     namespace = kubernetes_namespace.monitoring.metadata[0].name
-    annotations = {
-      "deployment-version" = "v1-minimal"
+    labels = {
+      app = "ml-metrics-exporter"
     }
-  }
-
-  lifecycle {
-    replace_triggered_by = [
-      kubernetes_namespace.monitoring.metadata[0].name
-    ]
   }
 
   spec {
@@ -53,5 +47,26 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
         }
       }
     }
+  }
+}
+
+resource "kubernetes_service" "ml_metrics_exporter" {
+  metadata {
+    name      = "ml-metrics-exporter"
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+  }
+
+  spec {
+    selector = {
+      app = "ml-metrics-exporter"
+    }
+
+    port {
+      port        = 8080
+      target_port = 8080
+      protocol    = "TCP"
+    }
+
+    type = "ClusterIP"
   }
 }
