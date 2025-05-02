@@ -23,7 +23,7 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
         }
 
         annotations = {
-          iam.gke.io/gcp-service-account = "gke-ml-workload@mlsecpix-456600.iam.gserviceaccount.com"
+          "iam.gke.io/gcp-service-account" = "gke-ml-workload@mlsecpix-456600.iam.gserviceaccount.com"
         }
       }
 
