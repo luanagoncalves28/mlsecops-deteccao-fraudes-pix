@@ -28,7 +28,7 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
 
         container {
           name  = "ml-metrics-exporter"
-          image = "gcr.io/mlsecpix-456600/ml-metrics-exporter:latest"
+          image = "southamerica-east1-docker.pkg.dev/mlsecpix-456600/mlsecpix-images-dev/ml-metrics-exporter:latest"
 
           port {
             container_port = 8080
