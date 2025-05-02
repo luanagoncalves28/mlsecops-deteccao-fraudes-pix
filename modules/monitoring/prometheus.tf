@@ -25,3 +25,24 @@ resource "kubernetes_config_map" "prometheus_config" {
     EOT
   }
 }
+
+resource "kubernetes_service" "prometheus_service" {
+  metadata {
+    name      = "prometheus-service"
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+  }
+
+  spec {
+    selector = {
+      app = "prometheus-server"
+    }
+
+    port {
+      port        = 9090
+      target_port = 9090
+      name        = "http"
+    }
+
+    type = "ClusterIP"
+  }
+}
