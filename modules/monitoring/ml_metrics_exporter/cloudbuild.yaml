@@ -1,16 +1,20 @@
 steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
-      - 'build'
-      - '-t'
-      - 'us-central1-docker.pkg.dev/mlsecpix-456600/mlsec-registry/ml-metrics-exporter:latest'
-      - '.'
+      [
+        'build',
+        '-t',
+        'gcr.io/mlsecpix-456600/ml-metrics-exporter:latest',
+        '.'
+      ]
     dir: 'modules/monitoring/ml_metrics_exporter'
 
   - name: 'gcr.io/cloud-builders/docker'
     args:
-      - 'push'
-      - 'us-central1-docker.pkg.dev/mlsecpix-456600/mlsec-registry/ml-metrics-exporter:latest'
+      [
+        'push',
+        'gcr.io/mlsecpix-456600/ml-metrics-exporter:latest'
+      ]
 
 images:
-  - 'us-central1-docker.pkg.dev/mlsecpix-456600/mlsec-registry/ml-metrics-exporter:latest'
+  - 'gcr.io/mlsecpix-456600/ml-metrics-exporter:latest'
