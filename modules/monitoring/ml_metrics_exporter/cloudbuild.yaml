@@ -2,18 +2,19 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
-  - name: gcr.io/cloud-builders/docker
-    args: [
-      'build',
-      '-f', 'modules/monitoring/ml_metrics_exporter/Dockerfile',
-      '-t', 'southamerica-east1-docker.pkg.dev/mlsecpix-456600/mlsecpix-images-dev/ml-metrics-exporter:latest',
-      '.'
-    ]
-  - name: gcr.io/cloud-builders/docker
-    args: [
-      'push',
-      'southamerica-east1-docker.pkg.dev/mlsecpix-456600/mlsecpix-images-dev/ml-metrics-exporter:latest'
-    ]
+  - name: 'gcr.io/cloud-builders/docker'
+    dir: 'modules/monitoring/ml_metrics_exporter'
+    args:
+      [
+        'build',
+        '-t',
+        'southamerica-east1-docker.pkg.dev/mlsecpix-456600/mlsecpix-images-dev/ml-metrics-exporter:latest',
+        '.'
+      ]
 
-images:
-  - southamerica-east1-docker.pkg.dev/mlsecpix-456600/mlsecpix-images-dev/ml-metrics-exporter:latest
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'push',
+        'southamerica-east1-docker.pkg.dev/mlsecpix-456600/mlsecpix-images-dev/ml-metrics-exporter:latest'
+      ]
