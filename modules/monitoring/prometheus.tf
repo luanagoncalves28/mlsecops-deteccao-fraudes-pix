@@ -1,28 +1,39 @@
-resource "kubernetes_config_map" "prometheus_config" {
+resource "kubernetes_deployment" "prometheus" {
   metadata {
-    name      = "prometheus-config"
+    name      = "prometheus"
     namespace = kubernetes_namespace.monitoring.metadata[0].name
+    labels = {
+      app = "prometheus"
+    }
   }
 
-  data = {
-    "prometheus.yml" = <<-EOT
-      global:
-        scrape_interval: 15s
-        evaluation_interval: 15s
+  spec {
+    replicas = 1
 
-      scrape_configs:
-        - job_name: 'prometheus'
-          static_configs:
-            - targets: ['localhost:9090']
+    selector {
+      match_labels = {
+        app = "prometheus"
+      }
+    }
 
-        - job_name: 'ml-metrics-exporter'
-          kubernetes_sd_configs:
-            - role: endpoints
-          relabel_configs:
-            - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_namespace]
-              action: keep
-              regex: ml-metrics-exporter;monitoring
-    EOT
+    template {
+      metadata {
+        labels = {
+          app = "prometheus"
+        }
+      }
+
+      spec {
+        container {
+          name  = "prometheus"
+          image = "prom/prometheus"
+
+          port {
+            container_port = 9090
+          }
+        }
+      }
+    }
   }
 }
 
@@ -34,13 +45,13 @@ resource "kubernetes_service" "prometheus_service" {
 
   spec {
     selector = {
-      app = "prometheus-server"
+      app = "prometheus"
     }
 
     port {
-      port        = 9090
+      name       = "http"
+      port       = 9090
       target_port = 9090
-      name        = "http"
     }
 
     type = "ClusterIP"
