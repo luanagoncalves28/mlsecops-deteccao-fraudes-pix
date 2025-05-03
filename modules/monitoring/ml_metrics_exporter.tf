@@ -40,6 +40,24 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
             container_port = 8080
           }
 
+          liveness_probe {
+            http_get {
+              path = "/metrics"
+              port = 8080
+            }
+            initial_delay_seconds = 5
+            period_seconds        = 10
+          }
+
+          readiness_probe {
+            http_get {
+              path = "/metrics"
+              port = 8080
+            }
+            initial_delay_seconds = 5
+            period_seconds        = 10
+          }
+
           resources {
             limits = {
               cpu    = "100m"
