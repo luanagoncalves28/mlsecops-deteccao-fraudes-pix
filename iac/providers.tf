@@ -1,7 +1,6 @@
-############################################################
-# ✅ iac/providers.tf
-# Declaração de providers – inclui grafana/grafana
-############################################################
+###############################################################################
+# PROVEDORES – CAMADA ROOT
+###############################################################################
 
 terraform {
   required_version = ">= 1.4"
@@ -22,9 +21,9 @@ terraform {
   }
 }
 
-############################################################
-# GOOGLE – usa o JSON codificado em base64
-############################################################
+#########################
+# GOOGLE
+#########################
 provider "google" {
   project     = var.gcp_project_id
   region      = var.gcp_region
@@ -34,27 +33,20 @@ provider "google" {
 
 data "google_client_config" "default" {}
 
-############################################################
-# KUBERNETES – configuração específica do cluster GKE
-############################################################
+#########################
+# KUBERNETES (cluster GKE)
+#########################
 provider "kubernetes" {
   host                   = "https://${module.gke.host}"
   cluster_ca_certificate = base64decode(module.gke.cluster_ca_certificate)
   token                  = data.google_client_config.default.access_token
 }
 
-provider "kubernetes" {
-  alias                  = "gke"
-  host                   = "https://${module.gke.host}"
-  cluster_ca_certificate = base64decode(module.gke.cluster_ca_certificate)
-  token                  = data.google_client_config.default.access_token
-}
-
-############################################################
-# GRAFANA – integração via API REST para dashboards
-# (auth deve ser STRING, não objeto)
-############################################################
+#########################
+# GRAFANA
+# – Usa o endereço público/NAT do Service LoadBalancer criado no módulo.
+#########################
 provider "grafana" {
-  url  = "http://grafana.monitoring.svc.cluster.local"
+  url  = "http://${var.grafana_lb_ip}:80"
   auth = "admin:${var.grafana_admin_password}"
 }

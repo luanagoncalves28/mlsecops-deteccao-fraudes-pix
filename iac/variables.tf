@@ -1,36 +1,37 @@
-############################################################
-# Variáveis globais do projeto
-############################################################
+###############################################################################
+# VARIÁVEIS GLOBAIS
+###############################################################################
 variable "gcp_project_id" {
   description = "ID do projeto GCP onde todos os recursos serão criados"
   type        = string
 }
 
 variable "gcp_region" {
-  description = "Região padrão para recursos GCP (ex.: buckets, GKE, NAT)"
+  description = "Região padrão para recursos GCP"
   type        = string
 }
 
 variable "gcp_zone" {
-  description = "Zona padrão para recursos zonais (VMs, discos, etc.)"
+  description = "Zona padrão para recursos zonais"
   type        = string
 }
 
 variable "environment" {
-  description = "Nome do ambiente (dev, staging, prod, …) — usado em tags, nomes de buckets, etc."
+  description = "Nome do ambiente (dev, staging, prod, …)"
   type        = string
 }
 
-# Credenciais como string base64
 variable "gcp_credentials_b64" {
-  description = "JSON da Service Account em formato base64, sem quebras de linha"
+  description = "JSON da Service Account em base64"
   type        = string
   sensitive   = true
 }
 
-# Variáveis para Databricks
+#########################
+# Databricks
+#########################
 variable "databricks_host" {
-  description = "URL do workspace Databricks onde os jobs/notebooks serão provisionados"
+  description = "URL do workspace Databricks"
   type        = string
 }
 
@@ -40,11 +41,17 @@ variable "databricks_token" {
   sensitive   = true
 }
 
-########################################################################
-# Variável usada no provider grafana
-########################################################################
+#########################
+# Grafana
+#########################
 variable "grafana_admin_password" {
-  description = "Senha de admin para autenticação básica no Grafana"
+  description = "Senha do admin do Grafana"
   type        = string
   sensitive   = true
+}
+
+# IP (ou hostname) público atribuído pelo Service LoadBalancer do Grafana
+variable "grafana_lb_ip" {
+  description = "IP ou hostname externo do Service LoadBalancer do Grafana"
+  type        = string
 }
