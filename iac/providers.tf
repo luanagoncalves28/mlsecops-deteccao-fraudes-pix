@@ -1,3 +1,8 @@
+############################################################
+# ✅ ARQUIVO A SER MODIFICADO: iac/providers.tf
+# Objetivo: incluir provider correto para o Grafana (grafana/grafana)
+############################################################
+
 terraform {
   required_version = ">= 1.4"
 
@@ -9,6 +14,10 @@ terraform {
     kubernetes = {
       source  = "hashicorp/kubernetes"
       version = ">= 2.27"
+    }
+    grafana = {
+      source  = "grafana/grafana"
+      version = ">= 1.40.0"
     }
   }
 }
@@ -23,7 +32,6 @@ provider "google" {
   credentials = base64decode(var.gcp_credentials_b64)
 }
 
-# Pega o access‑token da conta que o provider google está usando
 data "google_client_config" "default" {}
 
 ############################################################
@@ -35,10 +43,22 @@ provider "kubernetes" {
   token                  = data.google_client_config.default.access_token
 }
 
-# Alias para o provider kubernetes para módulos específicos
 provider "kubernetes" {
   alias                  = "gke"
   host                   = "https://${module.gke.host}"
   cluster_ca_certificate = base64decode(module.gke.cluster_ca_certificate)
   token                  = data.google_client_config.default.access_token
+}
+
+############################################################
+# GRAFANA – integração via API REST para dashboards
+############################################################
+provider "grafana" {
+  url = "http://grafana.monitoring.svc.cluster.local" # DNS interno do cluster
+  auth = {
+    basic_auth = {
+      username = "admin"
+      password = var.grafana_admin_password
+    }
+  }
 }

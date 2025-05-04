@@ -39,3 +39,12 @@ variable "databricks_token" {
   type        = string
   sensitive   = true
 }
+
+########################################################################
+# Variável usada no provider grafana
+########################################################################
+variable "grafana_admin_password" {
+  description = "Senha de admin para autenticação básica no Grafana"
+  type        = string
+  sensitive   = true
+}
