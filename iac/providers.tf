@@ -1,7 +1,6 @@
-###############################################################################
-# PROVEDORES – CAMADA ROOT
-###############################################################################
-
+############################################################
+# iac/providers.tf  – versão enxuta, 1 provider kubernetes
+############################################################
 terraform {
   required_version = ">= 1.4"
 
@@ -21,9 +20,7 @@ terraform {
   }
 }
 
-#########################
 # GOOGLE
-#########################
 provider "google" {
   project     = var.gcp_project_id
   region      = var.gcp_region
@@ -33,20 +30,15 @@ provider "google" {
 
 data "google_client_config" "default" {}
 
-#########################
-# KUBERNETES (cluster GKE)
-#########################
+# KUBERNETES – **apenas um** cluster (autopilot)
 provider "kubernetes" {
   host                   = "https://${module.gke.host}"
   cluster_ca_certificate = base64decode(module.gke.cluster_ca_certificate)
   token                  = data.google_client_config.default.access_token
 }
 
-#########################
-# GRAFANA
-# – Usa o endereço público/NAT do Service LoadBalancer criado no módulo.
-#########################
+# GRAFANA – usa auth como string
 provider "grafana" {
-  url  = "http://${var.grafana_lb_ip}:80"
+  url  = "http://${var.grafana_lb_ip}"
   auth = "admin:${var.grafana_admin_password}"
 }
