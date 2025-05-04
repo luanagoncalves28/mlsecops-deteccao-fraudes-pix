@@ -1,6 +1,6 @@
 ############################################################
-# ✅ ARQUIVO A SER MODIFICADO: iac/providers.tf
-# Objetivo: incluir provider correto para o Grafana (grafana/grafana)
+# ✅ iac/providers.tf
+# Declaração de providers – inclui grafana/grafana
 ############################################################
 
 terraform {
@@ -52,13 +52,9 @@ provider "kubernetes" {
 
 ############################################################
 # GRAFANA – integração via API REST para dashboards
+# (auth deve ser STRING, não objeto)
 ############################################################
 provider "grafana" {
-  url = "http://grafana.monitoring.svc.cluster.local" # DNS interno do cluster
-  auth = {
-    basic_auth = {
-      username = "admin"
-      password = var.grafana_admin_password
-    }
-  }
+  url  = "http://grafana.monitoring.svc.cluster.local"
+  auth = "admin:${var.grafana_admin_password}"
 }
