@@ -5,7 +5,7 @@ output "prometheus_namespace" {
 
 output "prometheus_service" {
   description = "Nome do serviço do Prometheus"
-  value       = kubernetes_service.prometheus_service.metadata[0].name
+  value       = "prometheus-service"  # Nome estático para evitar referência direta
 }
 
 output "grafana_service" {
