@@ -1,50 +1,3 @@
-# Configuração do ConfigMap para as métricas de ML
-resource "kubernetes_config_map" "ml_metrics_exporter_config" {
-  metadata {
-    name      = "ml-metrics-exporter-config"
-    namespace = kubernetes_namespace.monitoring.metadata[0].name
-  }
-
-  data = {
-    "config.yaml" = <<-EOF
-      metrics:
-        # Métricas para REQ-MON-*
-        - name: inference_latency_seconds
-          help: "Latência de inferência do modelo em segundos"
-        - name: inference_request_total
-          help: "Número total de solicitações de inferência ao modelo"
-        - name: uptime
-          help: "Tempo de atividade do sistema em segundos"
-        - name: fraud_detection_trigger_latency_seconds
-          help: "Tempo de resposta para transações com suspeita de fraude"
-          
-        # Métricas para REQ-ANO-*
-        - name: model_precision
-          help: "Precision do modelo de detecção de fraude"
-        - name: model_recall
-          help: "Recall do modelo de detecção de fraude"
-        - name: model_drift_score
-          help: "Score de drift do modelo ao longo do tempo"
-        - name: prediction_fraud_rate
-          help: "Taxa de transações classificadas como fraude"
-          
-        # Métricas para REQ-SEG-003/REQ-EXP-003
-        - name: model_version
-          help: "Versão atual do modelo em produção"
-        - name: prediction_latency_seconds
-          help: "Latência das previsões do modelo"
-          
-        # Métricas para REQ-SEG-*/REQ-MON-005
-        - name: http_request_duration_seconds
-          help: "Duração das requisições HTTP"
-        - name: inference_errors_total
-          help: "Total de erros de inferência"
-        - name: alertmanager_triggered_alerts
-          help: "Número de alertas ativos no sistema"
-    EOF
-  }
-}
-
 resource "kubernetes_deployment" "ml_metrics_exporter" {
   metadata {
     name      = "ml-metrics-exporter"
@@ -71,7 +24,7 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
 
         annotations = {
           "prometheus.io/scrape" = "true"
-          "prometheus.io/port"   = "8080"
+          "prometheus.io/port"   = "9090"
           "prometheus.io/path"   = "/metrics"
         }
       }
@@ -81,20 +34,19 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
 
         container {
           name  = "ml-metrics-exporter"
-          # Usar imagem pública enquanto a customizada não está disponível
+          # Usar uma imagem simples que sabemos que funciona
           image = "prom/prometheus:v2.45.0"
           
-          # Quando sua imagem estiver pronta, descomente esta linha e comente a de cima
-          # image = "${var.region}-docker.pkg.dev/${var.project_id}/mlsecpix-images-${var.environment}/ml-metrics-exporter:latest"
-
+          # Alterando a porta para 9090 para corresponder à porta padrão do Prometheus
           port {
-            container_port = 8080
+            container_port = 9090
           }
 
+          # Ajustar as probes para a porta correta
           liveness_probe {
             http_get {
               path = "/metrics"
-              port = 8080
+              port = 9090
             }
             initial_delay_seconds = 10
             period_seconds        = 30
@@ -105,16 +57,17 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
           readiness_probe {
             http_get {
               path = "/metrics"
-              port = 8080
+              port = 9090
             }
             initial_delay_seconds = 5
             period_seconds        = 10
           }
 
-          volume_mount {
-            name       = "config-volume"
-            mount_path = "/etc/ml-metrics-exporter"
-          }
+          # Remover o volume mount temporariamente para simplificar
+          # volume_mount {
+          #   name       = "config-volume"
+          #   mount_path = "/etc/ml-metrics-exporter"
+          # }
 
           resources {
             limits = {
@@ -128,12 +81,13 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
           }
         }
         
-        volume {
-          name = "config-volume"
-          config_map {
-            name = kubernetes_config_map.ml_metrics_exporter_config.metadata[0].name
-          }
-        }
+        # Remover o volume temporariamente
+        # volume {
+        #   name = "config-volume"
+        #   config_map {
+        #     name = kubernetes_config_map.ml_metrics_exporter_config.metadata[0].name
+        #   }
+        # }
       }
     }
   }
@@ -155,10 +109,19 @@ resource "kubernetes_service" "ml_metrics_exporter" {
 
     port {
       name        = "http"
-      port        = 8080
-      target_port = 8080
+      port        = 9090  # Alterado para 9090
+      target_port = 9090  # Alterado para 9090
     }
 
     type = "ClusterIP"
   }
 }
+
+# Comentar o ConfigMap para simplificar
+# resource "kubernetes_config_map" "ml_metrics_exporter_config" {
+#   metadata {
+#     name      = "ml-metrics-exporter-config"
+#     namespace = kubernetes_namespace.monitoring.metadata[0].name
+#   }
+#   ...
+# }
