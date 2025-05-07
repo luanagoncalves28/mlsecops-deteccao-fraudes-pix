@@ -35,14 +35,10 @@ provider "kubernetes" {
   host                   = try("https://${module.gke.host}", "dummy")
   cluster_ca_certificate = try(base64decode(module.gke.cluster_ca_certificate), "")
   token                  = data.google_client_config.default.access_token
-  
-  # Ignorar erros durante a fase de inicialização
-  ignore_annotations      = true
-  ignore_labels           = true
 }
 
 # GRAFANA - Desativado temporariamente até estar pronto
 # provider "grafana" {
 #   url  = "http://${var.grafana_lb_ip}"
 #   auth = "admin:${var.grafana_admin_password}"
-# } 
+# }
