@@ -1,3 +1,4 @@
+# Custom metrics exporter for ML telemetry
 resource "kubernetes_deployment" "ml_metrics_exporter" {
   metadata {
     name      = "ml-metrics-exporter"
@@ -21,25 +22,53 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
         labels = {
           app = "ml-metrics-exporter"
         }
+        annotations = {
+          "prometheus.io/scrape" = "true"
+          "prometheus.io/port"   = "8080"
+          "prometheus.io/path"   = "/metrics"
+        }
       }
 
       spec {
         container {
           name  = "ml-metrics-exporter"
-          # Usar uma imagem simples e leve que certamente vai iniciar
-          image = "python:3.9-alpine"
+          # Use the Flask app that generates Prometheus metrics
+          image = "${var.region}-docker.pkg.dev/${var.project_id}/mlsecpix-images-${var.environment}/ml-metrics-exporter:latest"
           
-          # Comando simples para manter o container rodando
-          command = ["sh", "-c", "while true; do sleep 30; done"]
+          # Expose metrics endpoint
+          port {
+            container_port = 8080
+          }
+          
+          # Health checks
+          liveness_probe {
+            http_get {
+              path = "/health"
+              port = 8080
+            }
+            initial_delay_seconds = 10
+            period_seconds        = 30
+            timeout_seconds       = 5
+            failure_threshold     = 3
+          }
+          
+          readiness_probe {
+            http_get {
+              path = "/health"
+              port = 8080
+            }
+            initial_delay_seconds = 5
+            period_seconds        = 10
+          }
           
           resources {
             limits = {
-              cpu    = "50m"
-              memory = "64Mi"
+              cpu    = "100m"
+              memory = "128Mi"
             }
             requests = {
-              cpu    = "10m"
-              memory = "32Mi"
+              cpu    = "50m"
+              memory = "64Mi"
             }
           }
         }
