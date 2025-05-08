@@ -1,4 +1,4 @@
-# Custom metrics exporter para telemetria ML
+# Custom metrics exporter temporário para telemetria ML
 resource "kubernetes_deployment" "ml_metrics_exporter" {
   metadata {
     name      = "ml-metrics-exporter"
@@ -32,30 +32,35 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
       spec {
         container {
           name  = "ml-metrics-exporter"
-          # Usa uma imagem temporária que funciona sem precisar de construção
-          # Depois vamos substituir pela nossa imagem personalizada
-          image = "prom/prometheus:v2.45.0"
+          # Imagem simplificada que certamente vai funcionar
+          image = "nginx:stable-alpine"
           
-          command = ["sh", "-c", "while true; do sleep 30; done"]
-          
-          # Expose metrics endpoint
+          # Porta padrão do NGINX
           port {
-            container_port = 8080
+            container_port = 80
+            name           = "http"
           }
           
+          # Configuração simplificada de recursos
           resources {
             limits = {
-              cpu    = "100m"
-              memory = "128Mi"
-            }
-            requests = {
               cpu    = "50m"
               memory = "64Mi"
+            }
+            requests = {
+              cpu    = "10m"
+              memory = "32Mi"
             }
           }
         }
       }
     }
+  }
+
+  # Adicionando timeout mais longo para evitar erros de deadline
+  timeouts {
+    create = "10m"
+    update = "10m"
   }
 }
 
@@ -76,7 +81,7 @@ resource "kubernetes_service" "ml_metrics_exporter" {
     port {
       name        = "http"
       port        = 8080
-      target_port = 8080
+      target_port = 80
     }
 
     type = "ClusterIP"
