@@ -1,4 +1,4 @@
-# Custom metrics exporter temporário para telemetria ML
+# Custom metrics exporter para telemetria ML
 resource "kubernetes_deployment" "ml_metrics_exporter" {
   metadata {
     name      = "ml-metrics-exporter"
@@ -32,24 +32,24 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
       spec {
         container {
           name  = "ml-metrics-exporter"
-          # Imagem simplificada que certamente vai funcionar
-          image = "nginx:stable-alpine"
+          # Usar a imagem mais recente do Artifact Registry
+          image = "southamerica-east1-docker.pkg.dev/mlsecpix-456600/mlsecpix-images-dev/ml-metrics-exporter:latest"
           
-          # Porta padrão do NGINX
+          # Porta para nossa aplicação Flask
           port {
-            container_port = 80
+            container_port = 8080
             name           = "http"
           }
           
-          # Configuração simplificada de recursos
+          # Recursos mais adequados para nosso exporter
           resources {
             limits = {
-              cpu    = "50m"
-              memory = "64Mi"
+              cpu    = "100m"
+              memory = "128Mi"
             }
             requests = {
-              cpu    = "10m"
-              memory = "32Mi"
+              cpu    = "50m"
+              memory = "64Mi"
             }
           }
         }
@@ -81,7 +81,7 @@ resource "kubernetes_service" "ml_metrics_exporter" {
     port {
       name        = "http"
       port        = 8080
-      target_port = 80
+      target_port = 8080
     }
 
     type = "ClusterIP"
