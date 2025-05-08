@@ -125,9 +125,31 @@ resource "kubernetes_deployment" "grafana" {
             }
           }
 
+          # Configurar timeout maior para dashboards complexos
+          env {
+            name  = "GF_DASHBOARDS_MIN_REFRESH_INTERVAL"
+            value = "5s"
+          }
+
+          # Aumentar limites para lidar com métricas de ML
+          env {
+            name  = "GF_SERVER_HTTP_TIMEOUT"
+            value = "60"
+          }
+
           volume_mount {
             name       = "grafana-config-volume"
             mount_path = "/etc/grafana/provisioning/datasources"
+          }
+
+          volume_mount {
+            name       = "grafana-dashboard-provisioning"
+            mount_path = "/etc/grafana/provisioning/dashboards"
+          }
+
+          volume_mount {
+            name       = "grafana-dashboards"
+            mount_path = "/var/lib/grafana/dashboards"
           }
 
           port {
@@ -152,6 +174,20 @@ resource "kubernetes_deployment" "grafana" {
 
           config_map {
             name = kubernetes_config_map.grafana_config.metadata[0].name
+          }
+        }
+
+        volume {
+          name = "grafana-dashboard-provisioning"
+          config_map {
+            name = kubernetes_config_map.grafana_dashboard_provisioning.metadata[0].name
+          }
+        }
+
+        volume {
+          name = "grafana-dashboards"
+          config_map {
+            name = kubernetes_config_map.grafana_dashboards.metadata[0].name
           }
         }
       }
