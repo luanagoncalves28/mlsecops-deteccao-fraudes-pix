@@ -26,22 +26,31 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
           "prometheus.io/scrape" = "true"
           "prometheus.io/port"   = "8080"
           "prometheus.io/path"   = "/metrics"
+          "kubernetes.io/change-cause" = "Update to metrics exporter with flask and thread starter"
         }
       }
 
       spec {
         container {
           name  = "ml-metrics-exporter"
-          # Usar a imagem mais recente do Artifact Registry
-          image = "southamerica-east1-docker.pkg.dev/mlsecpix-456600/mlsecpix-images-dev/ml-metrics-exporter:latest"
+          image = "python:3.10-slim"
           
-          # Porta para nossa aplicação Flask
+          # Comando para usar o ConfigMap
+          command = ["/bin/sh", "-c"]
+          args = [
+            "pip install -r /app/config/requirements.txt && python /app/config/app.py"
+          ]
+          
           port {
             container_port = 8080
             name           = "http"
           }
           
-          # Recursos mais adequados para nosso exporter
+          volume_mount {
+            name       = "config-volume"
+            mount_path = "/app/config"
+          }
+          
           resources {
             limits = {
               cpu    = "100m"
@@ -51,6 +60,44 @@ resource "kubernetes_deployment" "ml_metrics_exporter" {
               cpu    = "50m"
               memory = "64Mi"
             }
+          }
+
+          # Variável de ambiente para garantir que o Flask rode em modo de produção
+          env {
+            name  = "FLASK_ENV"
+            value = "production"
+          }
+
+          # Variável de ambiente para definir a porta
+          env {
+            name  = "PORT"
+            value = "8080"
+          }
+
+          # Configuração de health check
+          liveness_probe {
+            http_get {
+              path = "/health"
+              port = 8080
+            }
+            initial_delay_seconds = 30
+            period_seconds       = 10
+          }
+          
+          readiness_probe {
+            http_get {
+              path = "/health"
+              port = 8080
+            }
+            initial_delay_seconds = 5
+            period_seconds       = 5
+          }
+        }
+
+        volume {
+          name = "config-volume"
+          config_map {
+            name = kubernetes_config_map.ml_metrics_exporter_config.metadata[0].name
           }
         }
       }

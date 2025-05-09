@@ -386,6 +386,14 @@ def home():
             <p>Versão: 1.0.0</p>
             <p><a href="/metrics">Métricas Prometheus</a></p>
             <p><a href="/health">Status de Saúde</a></p>
+            <p><a href="/debug/metrics">Debug de Métricas</a></p>
+            <p>
+                <h3>Endpoints de Simulação:</h3>
+                <ul>
+                    <li>POST /simulate/prediction - Simula uma predição de fraude</li>
+                    <li>POST /simulate/dict - Simula uma consulta ao DICT</li>
+                </ul>
+            </p>
         </body>
     </html>
     """
@@ -627,13 +635,13 @@ def debug_metrics():
 # INICIALIZAÇÃO DA APLICAÇÃO
 #################################################################
 
+# Iniciar thread de atualização de métricas em segundo plano
+logger.info("Iniciando thread de atualização de métricas...")
+update_thread = threading.Thread(target=update_metrics, daemon=True)
+update_thread.start()
+
+# Iniciar servidor web quando executado diretamente
 if __name__ == '__main__':
-    # Iniciar thread de atualização de métricas em segundo plano
-    logger.info("Iniciando thread de atualização de métricas...")
-    update_thread = threading.Thread(target=update_metrics, daemon=True)
-    update_thread.start()
-    
-    # Iniciar servidor web
     port = int(os.environ.get('PORT', 8080))
     logger.info(f"Iniciando servidor na porta {port}...")
     app.run(host='0.0.0.0', port=port)
