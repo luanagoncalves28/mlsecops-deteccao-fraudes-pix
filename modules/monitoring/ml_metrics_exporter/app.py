@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Importações padrão do Python
 import random
 import time
@@ -10,34 +11,11 @@ import uuid
 from typing import Dict, List, Optional
 
 # Bibliotecas para métricas e API REST
-try:
-    from flask import Flask, jsonify, request, Response
-    from prometheus_client import (
-        Counter, Gauge, Histogram, Summary, 
-        generate_latest, REGISTRY, 
-        CollectorRegistry, multiprocess
-    )
-except ImportError:
-    print("Erro: Flask ou prometheus_client não estão instalados.")
-    print("Instale com: pip install flask prometheus_client")
-    # Classes fictícias para permitir que o código seja analisado
-    class Flask:
-        def __init__(self, name): self.name = name
-        def route(self, path): return lambda x: x
-    def jsonify(x): return x
-    class Counter:
-        def __init__(self, name, help): pass
-        def inc(self, amount=1): pass
-    class Gauge:
-        def __init__(self, name, help): pass
-        def set(self, value): self._value = value
-    class Histogram:
-        def __init__(self, name, help, buckets=None): pass
-        def observe(self, value): pass
-    class Summary:
-        def __init__(self, name, help): pass
-        def observe(self, value): pass
-    def generate_latest(): return b""
+from flask import Flask, jsonify, request, Response
+from prometheus_client import (
+    Counter, Gauge, Histogram, Summary, 
+    generate_latest, REGISTRY
+)
 
 # Configuração de logging
 logging.basicConfig(
@@ -48,13 +26,6 @@ logger = logging.getLogger('ml-metrics-exporter')
 
 # Inicialização da aplicação Flask
 app = Flask(__name__)
-
-# Configuração para multiprocessamento (se necessário)
-if 'PROMETHEUS_MULTIPROC_DIR' in os.environ:
-    registry = CollectorRegistry()
-    multiprocess.MultiProcessCollector(registry)
-else:
-    registry = REGISTRY
 
 #################################################################
 # DEFINIÇÃO DAS MÉTRICAS
@@ -110,7 +81,7 @@ prediction_fraud_rate = Gauge(
     ['channel', 'transaction_type']
 )
 
-model_version = Gauge(
+model_version_gauge = Gauge(
     'model_version', 
     'Versão atual do modelo em produção',
     ['model_name', 'model_type']
@@ -208,18 +179,22 @@ data_validation_errors = Counter(
 
 # Inicialização de valores simulados para algumas métricas
 # Valores para demonstração que seriam atualizados por sistemas reais
-model_precision.labels(model_version="1.0", model_type="xgboost").set(0.94)
-model_recall.labels(model_version="1.0", model_type="xgboost").set(0.91)
-model_f1_score.labels(model_version="1.0", model_type="xgboost").set(0.925)
-model_drift_score.labels(feature_set="base", model_version="1.0").set(0.03)
-prediction_fraud_rate.labels(channel="PIX", transaction_type="p2p").set(0.007)
-model_version.labels(model_name="fraude_pix_principal", model_type="xgboost").set(1)
-dict_integration_status.labels(operation_type="query").set(1)
-dict_integration_status.labels(operation_type="update").set(1)
-dict_cache_hit_ratio.set(0.85)
-service_health.labels(component="ml_serving").set(1)
-service_health.labels(component="dict_connector").set(1)
-service_health.labels(component="api_gateway").set(1)
+def initialize_metrics():
+    model_precision.labels(model_version="1.0", model_type="xgboost").set(0.94)
+    model_recall.labels(model_version="1.0", model_type="xgboost").set(0.91)
+    model_f1_score.labels(model_version="1.0", model_type="xgboost").set(0.925)
+    model_drift_score.labels(feature_set="base", model_version="1.0").set(0.03)
+    prediction_fraud_rate.labels(channel="PIX", transaction_type="p2p").set(0.007)
+    model_version_gauge.labels(model_name="fraude_pix_principal", model_type="xgboost").set(1)
+    dict_integration_status.labels(operation_type="query").set(1)
+    dict_integration_status.labels(operation_type="update").set(1)
+    dict_cache_hit_ratio.set(0.85)
+    service_health.labels(component="ml_serving").set(1)
+    service_health.labels(component="dict_connector").set(1)
+    service_health.labels(component="api_gateway").set(1)
+    blocked_accounts_total.labels(block_reason="fraude_confirmada", block_duration="72h").set(10)
+    blocked_accounts_total.labels(block_reason="suspeita_alta", block_duration="30d").set(5)
+    blocked_accounts_total.labels(block_reason="multiplas_denuncias", block_duration="indefinido").set(3)
 
 # Variáveis para simulação
 start_time = time.time()
@@ -236,117 +211,149 @@ block_reasons = ["fraude_confirmada", "suspeita_alta", "multiplas_denuncias", "o
 
 def update_metrics():
     """Thread que atualiza métricas simuladas periodicamente"""
+    logger.info("Iniciando thread de atualização de métricas...")
     while True:
-        # Atualizar uptime
-        uptime.set(time.time() - start_time)
-        
-        # Simular predições e fraudes
-        for _ in range(random.randint(5, 15)):
-            channel = random.choice(channels)
-            if random.random() < 0.1:  # 10% das transações são classificadas como fraude
-                prediction_counter.labels(result="fraud", channel=channel).inc()
-                if random.random() < 0.7:  # 70% das fraudes classificadas são reais
-                    fraud_type = random.choice(fraud_types)
-                    fraud_counter.labels(fraud_type=fraud_type).inc()
-            else:
-                prediction_counter.labels(result="legitimate", channel=channel).inc()
-        
-        # Simular erros ocasionais de inferência
-        if random.random() < 0.05:  # 5% de chance de erro
-            error_type = random.choice(error_types)
-            inference_errors.labels(error_type=error_type).inc()
-        
-        # Atualizar métricas de qualidade do modelo com pequenas variações
-        curr_precision = model_precision._value.get(model_precision.labels(model_version="1.0", model_type="xgboost"))
-        curr_recall = model_recall._value.get(model_recall.labels(model_version="1.0", model_type="xgboost"))
-        curr_drift = model_drift_score._value.get(model_drift_score.labels(feature_set="base", model_version="1.0"))
-        curr_fraud_rate = prediction_fraud_rate._value.get(prediction_fraud_rate.labels(channel="PIX", transaction_type="p2p"))
-        
-        # Adicionar pequenas variações aleatórias
-        model_precision.labels(model_version="1.0", model_type="xgboost").set(
-            max(0.7, min(0.99, curr_precision + random.uniform(-0.01, 0.01)))
-        )
-        model_recall.labels(model_version="1.0", model_type="xgboost").set(
-            max(0.7, min(0.99, curr_recall + random.uniform(-0.01, 0.01)))
-        )
-        # Atualizar F1 com base em precision e recall
-        new_precision = model_precision._value.get(model_precision.labels(model_version="1.0", model_type="xgboost"))
-        new_recall = model_recall._value.get(model_recall.labels(model_version="1.0", model_type="xgboost"))
-        if new_precision + new_recall > 0:  # Evitar divisão por zero
-            f1 = 2 * (new_precision * new_recall) / (new_precision + new_recall)
-            model_f1_score.labels(model_version="1.0", model_type="xgboost").set(f1)
-        
-        model_drift_score.labels(feature_set="base", model_version="1.0").set(
-            max(0.01, min(0.2, curr_drift + random.uniform(-0.005, 0.01)))
-        )
-        prediction_fraud_rate.labels(channel="PIX", transaction_type="p2p").set(
-            max(0.001, min(0.05, curr_fraud_rate + random.uniform(-0.001, 0.002)))
-        )
-        
-        # Simular contagem de contas bloqueadas
-        for reason in block_reasons:
-            for duration in block_durations:
-                current_val = blocked_accounts_total._value.get(blocked_accounts_total.labels(
-                    block_reason=reason, block_duration=duration)) or 0
-                # Pequenas mudanças aleatórias no número de contas bloqueadas
-                blocked_accounts_total.labels(
-                    block_reason=reason, 
-                    block_duration=duration
-                ).set(max(0, current_val + random.randint(-2, 5)))
-        
-        # Simular eventos de segurança
-        if random.random() < 0.2:  # 20% de chance de evento de segurança
-            severity = random.choice(["low", "medium", "high", "critical"])
-            event_type = random.choice([
-                "suspicious_login", "brute_force", "data_leak", 
-                "unauthorized_access", "unusual_pattern"
-            ])
-            security_events_total.labels(severity=severity, event_type=event_type).inc()
-        
-        # Simular erros de validação de dados
-        if random.random() < 0.15:  # 15% de chance de erro de validação
-            error_type = random.choice([
-                "missing_field", "invalid_format", "out_of_range", 
-                "type_mismatch", "constraint_violation"
-            ])
-            source = random.choice([
-                "mobile_app", "internet_banking", "partner_api", 
-                "batch_import", "third_party"
-            ])
-            data_validation_errors.labels(error_type=error_type, source=source).inc()
-        
-        # Simular latências
-        inference_latency.labels(
-            model_name="fraude_pix_principal", 
-            model_version="1.0"
-        ).observe(random.uniform(0.05, 0.3))
-        
-        fraud_detection_trigger_latency.labels(
-            fraud_type=random.choice(fraud_types),
-            action_taken=random.choice(["block", "alert", "additional_auth", "monitor"])
-        ).observe(random.uniform(0.2, 1.0))
-        
-        prediction_latency.labels(
-            model_name="fraude_pix_principal", 
-            prediction_type="real_time"
-        ).observe(random.uniform(0.05, 0.2))
-        
-        dict_query_latency.labels(
-            operation_type="query"
-        ).observe(random.uniform(0.1, 0.5))
-        
-        # Atualizar status de integração DICT ocasionalmente
-        if random.random() < 0.05:  # 5% de chance de problema de integração
-            dict_integration_status.labels(operation_type="query").set(0)  # Falha
-            time.sleep(2)  # Simular falha por 2 segundos
-            dict_integration_status.labels(operation_type="query").set(1)  # Restaurado
-        
-        # Atualizar cache hit ratio com pequenas variações
-        current_hit_ratio = dict_cache_hit_ratio._value.get() or 0.85
-        dict_cache_hit_ratio.set(max(0.7, min(0.95, current_hit_ratio + random.uniform(-0.02, 0.02))))
-        
-        # Pausa entre atualizações
-        time.sleep(5)
+        try:
+            # Atualizar uptime
+            uptime.set(time.time() - start_time)
+            
+            # Simular predições e fraudes
+            for _ in range(random.randint(5, 15)):
+                channel = random.choice(channels)
+                if random.random() < 0.1:  # 10% das transações são classificadas como fraude
+                    prediction_counter.labels(result="fraud", channel=channel).inc()
+                    if random.random() < 0.7:  # 70% das fraudes classificadas são reais
+                        fraud_type = random.choice(fraud_types)
+                        fraud_counter.labels(fraud_type=fraud_type).inc()
+                else:
+                    prediction_counter.labels(result="legitimate", channel=channel).inc()
+            
+            # Simular erros ocasionais de inferência
+            if random.random() < 0.05:  # 5% de chance de erro
+                error_type = random.choice(error_types)
+                inference_errors.labels(error_type=error_type).inc()
+            
+            # Atualizar métricas de qualidade do modelo com pequenas variações
+            # Obter valores atuais de forma segura
+            try:
+                curr_precision = float(model_precision.labels(model_version="1.0", model_type="xgboost")._value)
+            except:
+                curr_precision = 0.94
+                
+            try:
+                curr_recall = float(model_recall.labels(model_version="1.0", model_type="xgboost")._value)
+            except:
+                curr_recall = 0.91
+                
+            try:
+                curr_drift = float(model_drift_score.labels(feature_set="base", model_version="1.0")._value)
+            except:
+                curr_drift = 0.03
+                
+            try:
+                curr_fraud_rate = float(prediction_fraud_rate.labels(channel="PIX", transaction_type="p2p")._value)
+            except:
+                curr_fraud_rate = 0.007
+            
+            # Adicionar pequenas variações aleatórias
+            model_precision.labels(model_version="1.0", model_type="xgboost").set(
+                max(0.7, min(0.99, curr_precision + random.uniform(-0.01, 0.01)))
+            )
+            model_recall.labels(model_version="1.0", model_type="xgboost").set(
+                max(0.7, min(0.99, curr_recall + random.uniform(-0.01, 0.01)))
+            )
+            
+            # Atualizar F1 com base em precision e recall
+            try:
+                new_precision = float(model_precision.labels(model_version="1.0", model_type="xgboost")._value)
+                new_recall = float(model_recall.labels(model_version="1.0", model_type="xgboost")._value)
+                if new_precision + new_recall > 0:  # Evitar divisão por zero
+                    f1 = 2 * (new_precision * new_recall) / (new_precision + new_recall)
+                    model_f1_score.labels(model_version="1.0", model_type="xgboost").set(f1)
+            except:
+                # Se não conseguir calcular, apenas atualiza com uma pequena variação
+                model_f1_score.labels(model_version="1.0", model_type="xgboost").set(
+                    max(0.7, min(0.99, 0.925 + random.uniform(-0.01, 0.01)))
+                )
+            
+            model_drift_score.labels(feature_set="base", model_version="1.0").set(
+                max(0.01, min(0.2, curr_drift + random.uniform(-0.005, 0.01)))
+            )
+            prediction_fraud_rate.labels(channel="PIX", transaction_type="p2p").set(
+                max(0.001, min(0.05, curr_fraud_rate + random.uniform(-0.001, 0.002)))
+            )
+            
+            # Simular contagem de contas bloqueadas
+            for reason in block_reasons:
+                for duration in block_durations:
+                    # Usa .set() diretamente com um valor calculado
+                    # em vez de tentar acessar o valor atual
+                    curr_val = random.randint(1, 20)  # Simplificado
+                    blocked_accounts_total.labels(
+                        block_reason=reason, 
+                        block_duration=duration
+                    ).set(max(0, curr_val + random.randint(-2, 5)))
+            
+            # Simular eventos de segurança
+            if random.random() < 0.2:  # 20% de chance de evento de segurança
+                severity = random.choice(["low", "medium", "high", "critical"])
+                event_type = random.choice([
+                    "suspicious_login", "brute_force", "data_leak", 
+                    "unauthorized_access", "unusual_pattern"
+                ])
+                security_events_total.labels(severity=severity, event_type=event_type).inc()
+            
+            # Simular erros de validação de dados
+            if random.random() < 0.15:  # 15% de chance de erro de validação
+                error_type = random.choice([
+                    "missing_field", "invalid_format", "out_of_range", 
+                    "type_mismatch", "constraint_violation"
+                ])
+                source = random.choice([
+                    "mobile_app", "internet_banking", "partner_api", 
+                    "batch_import", "third_party"
+                ])
+                data_validation_errors.labels(error_type=error_type, source=source).inc()
+            
+            # Simular latências
+            inference_latency.labels(
+                model_name="fraude_pix_principal", 
+                model_version="1.0"
+            ).observe(random.uniform(0.05, 0.3))
+            
+            fraud_detection_trigger_latency.labels(
+                fraud_type=random.choice(fraud_types),
+                action_taken=random.choice(["block", "alert", "additional_auth", "monitor"])
+            ).observe(random.uniform(0.2, 1.0))
+            
+            prediction_latency.labels(
+                model_name="fraude_pix_principal", 
+                prediction_type="real_time"
+            ).observe(random.uniform(0.05, 0.2))
+            
+            dict_query_latency.labels(
+                operation_type="query"
+            ).observe(random.uniform(0.1, 0.5))
+            
+            # Atualizar status de integração DICT ocasionalmente
+            if random.random() < 0.05:  # 5% de chance de problema de integração
+                dict_integration_status.labels(operation_type="query").set(0)  # Falha
+                time.sleep(2)  # Simular falha por 2 segundos
+                dict_integration_status.labels(operation_type="query").set(1)  # Restaurado
+            
+            # Atualizar cache hit ratio com pequenas variações
+            try:
+                current_hit_ratio = float(dict_cache_hit_ratio._value)
+            except:
+                current_hit_ratio = 0.85
+                
+            dict_cache_hit_ratio.set(max(0.7, min(0.95, current_hit_ratio + random.uniform(-0.02, 0.02))))
+            
+            # Pausa entre atualizações
+            time.sleep(5)
+        except Exception as e:
+            logger.error(f"Erro na thread de atualização de métricas: {e}")
+            time.sleep(5)  # Continua tentando em caso de erro
 
 #################################################################
 # ROTAS DA API
@@ -386,14 +393,6 @@ def home():
             <p>Versão: 1.0.0</p>
             <p><a href="/metrics">Métricas Prometheus</a></p>
             <p><a href="/health">Status de Saúde</a></p>
-            <p><a href="/debug/metrics">Debug de Métricas</a></p>
-            <p>
-                <h3>Endpoints de Simulação:</h3>
-                <ul>
-                    <li>POST /simulate/prediction - Simula uma predição de fraude</li>
-                    <li>POST /simulate/dict - Simula uma consulta ao DICT</li>
-                </ul>
-            </p>
         </body>
     </html>
     """
@@ -401,7 +400,7 @@ def home():
 @app.route('/metrics')
 def metrics():
     """Endpoint para exposição de métricas para o Prometheus"""
-    return Response(generate_latest(registry), mimetype="text/plain")
+    return Response(generate_latest(REGISTRY), mimetype="text/plain")
 
 @app.route('/health')
 def health():
@@ -421,9 +420,9 @@ def health():
         "version": "1.0.0",
         "uptime_seconds": time.time() - start_time,
         "components": {
-            "ml_serving": service_health._value.get(service_health.labels(component="ml_serving")) == 1,
-            "dict_connector": service_health._value.get(service_health.labels(component="dict_connector")) == 1,
-            "api_gateway": service_health._value.get(service_health.labels(component="api_gateway")) == 1
+            "ml_serving": True,  # Valor estático para evitar acesso direto ao estado interno
+            "dict_connector": True,
+            "api_gateway": True
         },
         "timestamp": datetime.datetime.now().isoformat()
     }
@@ -465,15 +464,15 @@ def simulate_prediction():
         if random.random() < 0.7:  # 70% são fraudes confirmadas
             fraud_counter.labels(fraud_type=fraud_type).inc()
             
-            # Simular ação de bloqueio
+            # Simular ação de bloqueio (sem tentar acessar o valor atual)
             block_duration = random.choice(block_durations)
             block_reason = random.choice(block_reasons)
-            current_blocked = blocked_accounts_total._value.get(blocked_accounts_total.labels(
-                block_reason=block_reason, block_duration=block_duration)) or 0
+            
+            # Incrementar com um valor randômico pequeno
             blocked_accounts_total.labels(
                 block_reason=block_reason, 
                 block_duration=block_duration
-            ).set(current_blocked + 1)
+            ).inc(1)  # Incrementa em 1 unidade
     else:
         prediction_counter.labels(result="legitimate", channel=channel).inc()
     
@@ -577,13 +576,10 @@ def simulate_dict_query():
         
         # Atualizar taxa de acerto do cache
         if error_response["cache_hit"]:
-            current_ratio = dict_cache_hit_ratio._value.get() or 0.85
-            # Pequeno incremento na taxa de acerto
-            dict_cache_hit_ratio.set(min(0.95, current_ratio + 0.001))
+            # Sempre usa set() diretamente com um valor fixo ou calculado
+            dict_cache_hit_ratio.set(0.85)  # Valor fixo para simplificar
         else:
-            current_ratio = dict_cache_hit_ratio._value.get() or 0.85
-            # Pequeno decremento na taxa de acerto
-            dict_cache_hit_ratio.set(max(0.7, current_ratio - 0.002))
+            dict_cache_hit_ratio.set(0.75)  # Valor fixo para simplificar
     
     # Registrar auditoria da requisição
     request_audit_counter.labels(
@@ -605,43 +601,37 @@ def simulate_dict_query():
 @app.route('/debug/metrics', methods=['GET'])
 def debug_metrics():
     """Endpoint para depuração de métricas (apenas para desenvolvimento)"""
-    metrics_dict = {}
-    
-    # Coletar métricas atuais
-    for metric in [
-        model_precision, model_recall, model_f1_score, model_drift_score, 
-        prediction_fraud_rate, dict_integration_status, dict_cache_hit_ratio,
-        service_health, blocked_accounts_total
-    ]:
-        if hasattr(metric, '_value'):
-            metrics_dict[metric._name] = {str(k): v for k, v in metric._value.items()} if hasattr(metric._value, 'items') else metric._value
-    
-    # Coletar contadores
-    for counter in [
-        prediction_counter, fraud_counter, inference_errors, 
-        request_audit_counter, decision_audit_counter, security_events_total,
-        data_validation_errors
-    ]:
-        if hasattr(counter, '_value'):
-            metrics_dict[counter._name] = {str(k): v for k, v in counter._value.items()} if hasattr(counter._value, 'items') else counter._value
-    
+    # Criar uma resposta simplificada com algumas informações para debugging
     return jsonify({
-        "metrics": metrics_dict,
+        "info": "Endpoint para debugging de métricas disponível",
         "uptime_seconds": time.time() - start_time,
-        "timestamp": datetime.datetime.now().isoformat()
+        "timestamp": datetime.datetime.now().isoformat(),
+        "available_metrics": [
+            "ml_predictions_total", 
+            "model_precision", 
+            "model_recall",
+            "inference_latency_seconds",
+            "dict_integration_status",
+            "service_health",
+            # Listar algumas métricas-chave
+        ]
     })
 
 #################################################################
 # INICIALIZAÇÃO DA APLICAÇÃO
 #################################################################
 
-# Iniciar thread de atualização de métricas em segundo plano
-logger.info("Iniciando thread de atualização de métricas...")
-update_thread = threading.Thread(target=update_metrics, daemon=True)
-update_thread.start()
-
-# Iniciar servidor web quando executado diretamente
 if __name__ == '__main__':
+    # Inicializar valores de métricas
+    initialize_metrics()
+    
+    # Iniciar thread de atualização de métricas em segundo plano
+    logger.info("Iniciando thread de atualização de métricas...")
+    update_thread = threading.Thread(target=update_metrics, daemon=True)
+    update_thread.start()
+    
+    # Iniciar servidor web
     port = int(os.environ.get('PORT', 8080))
     logger.info(f"Iniciando servidor na porta {port}...")
     app.run(host='0.0.0.0', port=port)
+    
