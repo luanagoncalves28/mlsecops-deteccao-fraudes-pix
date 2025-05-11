@@ -103,3 +103,16 @@ module "databricks" {
   autoscale_max_workers          = 4
   labels = { product = "mlsecpix" }
 }
+
+######################## 9. Backup ###########################
+module "backup" {
+  source      = "../modules/backup"
+  project_id  = var.gcp_project_id
+  region      = var.gcp_region
+  environment = var.environment
+  labels      = { product = "mlsecpix" }
+  
+  depends_on = [
+    module.storage
+  ]
+}

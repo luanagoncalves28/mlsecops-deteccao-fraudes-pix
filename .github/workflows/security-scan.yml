@@ -1,0 +1,61 @@
+name: Security Scan
+
+on:
+  schedule:
+    # Executar todos os dias às 02:00 UTC
+    - cron: '0 2 * * *'
+  
+  # Permitir execução manual
+  workflow_dispatch:
+  
+  # Executar em pull requests para a branch principal
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'iac/**'
+      - 'modules/**'
+      - 'security/**'
+
+jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    
+    - name: Set up Google Cloud SDK
+      uses: google-github-actions/setup-gcloud@v0
+      with:
+        project_id: ${{ secrets.GCP_PROJECT_ID }}
+        service_account_key: ${{ secrets.GCP_SA_KEY }}
+    
+    - name: Install kubectl
+      run: |
+        curl -LO "https://dl.k8s.io/release/stable.txt"
+        curl -LO "https://dl.k8s.io/release/$(cat stable.txt)/bin/linux/amd64/kubectl"
+        chmod +x kubectl
+        sudo mv kubectl /usr/local/bin/
+    
+    - name: Connect to GKE cluster
+      run: |
+        gcloud container clusters get-credentials mlsecpix-${{ vars.ENVIRONMENT }}-gke \
+          --region=${{ vars.GCP_REGION }} \
+          --project=${{ secrets.GCP_PROJECT_ID }}
+    
+    - name: Run security checks
+      run: |
+        chmod +x security/pentest/k8s_security_scan.sh
+        ./security/pentest/k8s_security_scan.sh
+    
+    - name: Upload security report
+      uses: actions/upload-artifact@v2
+      with:
+        name: security-report
+        path: security_report_*.txt
+    
+    - name: Check for critical issues
+      run: |
+        if grep -q "✗ ALERTA" security_report_*.txt; then
+          echo "::warning::Foram encontrados problemas críticos de segurança. Verifique o relatório anexado."
+        fi
