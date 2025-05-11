@@ -1,3 +1,66 @@
+# Service Account for Prometheus
+resource "kubernetes_service_account" "prometheus" {
+  metadata {
+    name      = "prometheus"
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+    labels = {
+      app = "prometheus"
+    }
+  }
+}
+
+# Config Map for Prometheus
+resource "kubernetes_config_map" "prometheus_config" {
+  metadata {
+    name      = "prometheus-config"
+    namespace = kubernetes_namespace.monitoring.metadata[0].name
+  }
+
+  data = {
+    "prometheus.yml" = file("${path.module}/prometheus-config.yaml")
+    "alert_rules.yml" = <<EOF
+groups:
+- name: MLSecOps
+  rules:
+  - alert: SystemUnavailable
+    expr: up == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Sistema indisponível"
+      description: "O sistema está indisponível há mais de 1 minuto."
+      
+  - alert: HighInferenceLatency
+    expr: inference_latency_seconds > 0.2
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Alta latência de inferência"
+      description: "A latência de inferência está acima de 200ms por mais de 2 minutos."
+      
+  - alert: ModelDriftDetected
+    expr: model_drift_score > 0.1
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Drift de modelo detectado"
+      description: "Foi detectado drift no modelo com score acima de 0.1."
+      
+  - alert: HighFalsePositiveRate
+    expr: (prediction_fraud_rate / (model_precision + 0.001)) > 0.1
+    for: 15m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Alta taxa de falsos positivos"
+      description: "A taxa de falsos positivos está acima do limiar esperado."
+EOF
+  }
+}
+
 # Adicionando o Deployment do Prometheus
 resource "kubernetes_deployment" "prometheus" {
   metadata {
