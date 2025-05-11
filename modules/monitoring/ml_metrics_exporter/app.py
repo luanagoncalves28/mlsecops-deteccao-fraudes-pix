@@ -164,6 +164,23 @@ dict_cache_hit_ratio = Gauge(
     'Taxa de acerto do cache para consultas ao DICT'
 )
 
+# Novas métricas para alertas regulatórios
+model_explainability_score = Gauge(
+    'model_explainability_score',
+    'Score de explicabilidade do modelo',
+    ['model_version', 'model_type']
+)
+
+data_retention_compliance = Gauge(
+    'data_retention_compliance',
+    'Indicador de conformidade com retenção de dados (1=compliant, 0=non-compliant)'
+)
+
+audit_log_integrity = Gauge(
+    'audit_log_integrity',
+    'Integridade dos logs de auditoria (1=completa, 0=comprometida)'
+)
+
 # Grupo 6: Métricas de Segurança (REQ-SEG-*)
 security_events_total = Counter(
     'security_events_total', 
@@ -195,6 +212,10 @@ def initialize_metrics():
     blocked_accounts_total.labels(block_reason="fraude_confirmada", block_duration="72h").set(10)
     blocked_accounts_total.labels(block_reason="suspeita_alta", block_duration="30d").set(5)
     blocked_accounts_total.labels(block_reason="multiplas_denuncias", block_duration="indefinido").set(3)
+    # Inicialização para as novas métricas
+    model_explainability_score.labels(model_version="1.0", model_type="xgboost").set(0.95)
+    data_retention_compliance.set(1)
+    audit_log_integrity.set(1)
 
 # Variáveis para simulação
 start_time = time.time()
@@ -349,12 +370,34 @@ def update_metrics():
                 
             dict_cache_hit_ratio.set(max(0.7, min(0.95, current_hit_ratio + random.uniform(-0.02, 0.02))))
             
+            # Atualização para as novas métricas
+            try:
+                curr_explainability = float(model_explainability_score.labels(model_version="1.0", model_type="xgboost")._value)
+            except:
+                curr_explainability = 0.95
+                
+            model_explainability_score.labels(model_version="1.0", model_type="xgboost").set(
+                max(0.7, min(0.99, curr_explainability + random.uniform(-0.01, 0.01)))
+            )
+            
+            # Simulação ocasional de problemas de compliance
+            if random.random() < 0.02:  # 2% de chance
+                data_retention_compliance.set(0)
+                time.sleep(3)  # Simular problema por 3 segundos
+                data_retention_compliance.set(1)
+            
+            # Simulação ocasional de problemas no log de auditoria
+            if random.random() < 0.01:  # 1% de chance
+                audit_log_integrity.set(0)
+                time.sleep(2)  # Simular problema por 2 segundos
+                audit_log_integrity.set(1)
+            
             # Pausa entre atualizações
             time.sleep(5)
         except Exception as e:
             logger.error(f"Erro na thread de atualização de métricas: {e}")
             time.sleep(5)  # Continua tentando em caso de erro
-
+            
 #################################################################
 # ROTAS DA API
 #################################################################
@@ -622,16 +665,15 @@ def debug_metrics():
 #################################################################
 
 if __name__ == '__main__':
-    # Inicializar valores de métricas
-    initialize_metrics()
-    
-    # Iniciar thread de atualização de métricas em segundo plano
-    logger.info("Iniciando thread de atualização de métricas...")
-    update_thread = threading.Thread(target=update_metrics, daemon=True)
-    update_thread.start()
-    
-    # Iniciar servidor web
-    port = int(os.environ.get('PORT', 8080))
-    logger.info(f"Iniciando servidor na porta {port}...")
-    app.run(host='0.0.0.0', port=port)
-    
+   # Inicializar valores de métricas
+   initialize_metrics()
+   
+   # Iniciar thread de atualização de métricas em segundo plano
+   logger.info("Iniciando thread de atualização de métricas...")
+   update_thread = threading.Thread(target=update_metrics, daemon=True)
+   update_thread.start()
+   
+   # Iniciar servidor web
+   port = int(os.environ.get('PORT', 8080))
+   logger.info(f"Iniciando servidor na porta {port}...")
+   app.run(host='0.0.0.0', port=port)

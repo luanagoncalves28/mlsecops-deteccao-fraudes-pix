@@ -2,17 +2,26 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
-scrape_configs:
-  - job_name: "prometheus"
-    static_configs:
-      - targets: ["localhost:9090"]
+# Regras de alerta para monitorar componentes críticos
+rule_files:
+  - "/etc/prometheus/alert_rules.yml"
+  - "/etc/prometheus/regulatory_alerts.yml"
 
-  - job_name: "ml-metrics-exporter"
+scrape_configs:
+  # Monitorar o próprio Prometheus
+  - job_name: prometheus
+    static_configs:
+      - targets: ['localhost:9090']
+    
+  # Métricas específicas de ML 
+  - job_name: ml_metrics_exporter
+    static_configs:
+      - targets: ['ml-metrics-exporter:8080']
+    
+  # Descoberta automática de serviços Kubernetes anotados
+  - job_name: kubernetes-pods
     kubernetes_sd_configs:
       - role: pod
-        namespaces:
-          names:
-            - monitoring
     relabel_configs:
       - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
         action: keep
@@ -23,6 +32,14 @@ scrape_configs:
         regex: (.+)
       - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
         action: replace
-        regex: (.+):(?:\d+);(\d+)
+        regex: (.+):(\\d+);(\\d+)
         replacement: $1:$2
         target_label: __address__
+      - action: labelmap
+        regex: __meta_kubernetes_pod_label_(.+)
+      - source_labels: [__meta_kubernetes_namespace]
+        action: replace
+        target_label: kubernetes_namespace
+      - source_labels: [__meta_kubernetes_pod_name]
+        action: replace
+        target_label: kubernetes_pod_name
