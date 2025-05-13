@@ -1,0 +1,59 @@
+name: Trivy Container Scan
+
+on:
+  workflow_dispatch:  # Permite execução manual
+
+jobs:
+  trivy-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Trivy
+        run: |
+          sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install -y trivy
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Authenticate with Google Artifact Registry
+        run: |
+          gcloud auth configure-docker southamerica-east1-docker.pkg.dev
+
+      - name: Scan image with Trivy
+        run: |
+          trivy image --severity HIGH,CRITICAL --format json --output trivy-report.json southamerica-east1-docker.pkg.dev/mlsecpix-456600/mlsecpix-images-dev/ml-metrics-exporter:latest
+          
+          # Criar versão legível do relatório
+          trivy image --severity HIGH,CRITICAL southamerica-east1-docker.pkg.dev/mlsecpix-456600/mlsecpix-images-dev/ml-metrics-exporter:latest > trivy-report.txt
+
+      - name: Upload Trivy reports
+        uses: actions/upload-artifact@v2
+        with:
+          name: trivy-report
+          path: |
+            trivy-report.json
+            trivy-report.txt
+          retention-days: 90
+          
+      - name: Check results
+        run: |
+          # Contar vulnerabilidades críticas
+          CRITICAL_COUNT=$(cat trivy-report.json | jq '.Results[] | select(.Vulnerabilities != null) | .Vulnerabilities[] | select(.Severity == "CRITICAL") | .VulnerabilityID' | wc -l)
+          
+          # Contar vulnerabilidades de alta severidade
+          HIGH_COUNT=$(cat trivy-report.json | jq '.Results[] | select(.Vulnerabilities != null) | .Vulnerabilities[] | select(.Severity == "HIGH") | .VulnerabilityID' | wc -l)
+          
+          echo "Encontradas $CRITICAL_COUNT vulnerabilidades críticas e $HIGH_COUNT de alta severidade"
+          
+          if [ "$CRITICAL_COUNT" -gt "0" ]; then
+            echo "::error::Vulnerabilidades críticas encontradas na imagem"
+            exit 1

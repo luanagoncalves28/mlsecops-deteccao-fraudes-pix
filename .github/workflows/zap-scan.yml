@@ -1,0 +1,47 @@
+name: OWASP ZAP API Scan
+
+on:
+  workflow_dispatch:  # Permite execução manual
+
+jobs:
+  zap-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Get API Endpoint
+        run: |
+          gcloud container clusters get-credentials mlsecpix-${{ secrets.ENVIRONMENT }}-gke \
+            --region=${{ secrets.GCP_REGION }} \
+            --project=${{ secrets.GCP_PROJECT_ID }}
+          
+          # Configurar port-forward em background
+          kubectl port-forward svc/ml-metrics-exporter -n monitoring 8080:8080 &
+          PID=$!
+          # Aguardar port-forward estabelecer
+          sleep 10
+          
+          # Executar o ZAP Scan
+          docker run --rm --network host \
+            -v $(pwd):/zap/wrk/:rw \
+            owasp/zap2docker-stable zap-baseline.py \
+            -t http://localhost:8080 \
+            -g gen.conf \
+            -r zap-report.html
+            
+          # Encerrar o port-forward
+          kill $PID
+      
+      - name: Upload report
+        uses: actions/upload-artifact@v2
+        with:
+          name: zap-report
+          path: zap-report.html
+          retention-days: 90

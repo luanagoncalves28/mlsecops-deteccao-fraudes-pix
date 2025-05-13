@@ -1,0 +1,48 @@
+name: Kube-bench CIS Benchmark
+
+on:
+  workflow_dispatch:  # Permite execução manual
+
+jobs:
+  kube-bench:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v0
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Connect to GKE cluster
+        run: |
+          gcloud container clusters get-credentials mlsecpix-${{ secrets.ENVIRONMENT }}-gke \
+            --region=${{ secrets.GCP_REGION }} \
+            --project=${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Run kube-bench
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/aquasecurity/kube-bench/main/job.yaml
+          sleep 30  # Espera o job completar
+          kubectl logs -l app=kube-bench --tail=1000 > kube-bench-report.txt
+
+      - name: Upload kube-bench report
+        uses: actions/upload-artifact@v2
+        with:
+          name: kube-bench-report
+          path: kube-bench-report.txt
+          retention-days: 90
+          
+      - name: Check results
+        run: |
+          FAIL_COUNT=$(grep -c '\[FAIL\]' kube-bench-report.txt || echo "0")
+          WARN_COUNT=$(grep -c '\[WARN\]' kube-bench-report.txt || echo "0")
+          
+          echo "Encontrados $FAIL_COUNT problemas críticos e $WARN_COUNT advertências"
+          
+          if [ "$FAIL_COUNT" -gt "10" ]; then
+            echo "::error::Muitos problemas críticos encontrados na verificação do CIS Benchmark"
+            exit 1
+          fi
