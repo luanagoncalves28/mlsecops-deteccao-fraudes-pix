@@ -1,0 +1,166 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: security-scanner
+  namespace: monitoring
+spec:
+  schedule: "0 2 * * *"  # Executa diariamente às 2h da manhã
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: security-scanner
+        spec:
+          containers:
+          - name: security-scanner
+            image: bitnami/kubectl:latest
+            resources:
+              limits:
+                cpu: "500m"
+                memory: "512Mi"
+              requests:
+                cpu: "100m"
+                memory: "256Mi"
+            command:
+            - /bin/bash
+            - -c
+            - |
+              # Criar diretório para relatórios
+              mkdir -p /reports
+
+              # Executar verificação de segurança do Kubernetes
+              echo "Iniciando verificação de segurança do Kubernetes..."
+              
+              # Data para nome do arquivo
+              DATE=$(date +%Y%m%d_%H%M%S)
+              
+              # Verificar pods com privilégios elevados
+              echo "Verificando pods com privilégios elevados..."
+              kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{"\n"}{.metadata.name}{"\t"}{.metadata.namespace}{range .spec.containers[*]}{"\t"}{.securityContext.privileged}{end}{end}' | grep -E "true" > /reports/privileged_pods_${DATE}.txt || echo "Nenhum pod privilegiado encontrado" > /reports/privileged_pods_${DATE}.txt
+              
+              # Verificar pods sem limites de recursos
+              echo "Verificando pods sem limites de recursos..."
+              kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{"\n"}{.metadata.name}{"\t"}{.metadata.namespace}{range .spec.containers[*]}{"\t"}{"Limites: "}{.resources.limits}{end}{end}' | grep -E "Limites: null|Limites: <no value>|Limites: $" > /reports/pods_without_limits_${DATE}.txt || echo "Todos os pods têm limites de recursos" > /reports/pods_without_limits_${DATE}.txt
+              
+              # Verificar serviços expostos externamente
+              echo "Verificando serviços expostos externamente..."
+              kubectl get svc --all-namespaces -o jsonpath='{range .items[*]}{"\n"}{.metadata.name}{"\t"}{.metadata.namespace}{"\t"}{.spec.type}{end}' | grep -E "LoadBalancer|NodePort" > /reports/exposed_services_${DATE}.txt || echo "Nenhum serviço exposto externamente" > /reports/exposed_services_${DATE}.txt
+              
+              # Verificar Network Policies
+              echo "Verificando Network Policies..."
+              NAMESPACES=$(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}')
+              NAMESPACES_WITHOUT_NETPOL=""
+              for ns in $NAMESPACES; do
+                if [[ "$ns" != "kube-system" && "$ns" != "kube-public" && "$ns" != "kube-node-lease" ]]; then
+                  NETPOL_COUNT=$(kubectl get networkpolicy -n $ns -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | wc -w || echo "0")
+                  if [[ "$NETPOL_COUNT" -eq 0 ]]; then
+                    NAMESPACES_WITHOUT_NETPOL+="$ns "
+                  fi
+                fi
+              done
+              echo "Namespaces sem Network Policies: $NAMESPACES_WITHOUT_NETPOL" > /reports/namespaces_without_netpol_${DATE}.txt
+              
+              # Determinar o resultado do scan
+              CRITICAL_ISSUES=$(cat /reports/privileged_pods_${DATE}.txt | grep -v "Nenhum" | wc -l)
+              HIGH_ISSUES=$(($(cat /reports/pods_without_limits_${DATE}.txt | grep -v "Todos" | wc -l) + $(cat /reports/broad_bindings_${DATE}.txt | grep -v "Nenhum" | wc -l)))
+              
+              echo "Total de problemas críticos: $CRITICAL_ISSUES" >> /reports/security_summary_${DATE}.txt
+              echo "Total de problemas de alta severidade: $HIGH_ISSUES" >> /reports/security_summary_${DATE}.txt
+              
+              # Resultado do scan
+              echo "Verificação de segurança concluída. Relatórios salvos em /reports/"
+              ls -la /reports/
+            volumeMounts:
+            - name: report-volume
+              mountPath: /reports
+          volumes:
+          - name: report-volume
+            persistentVolumeClaim:
+              claimName: security-reports-pvc
+          restartPolicy: OnFailure
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: security-reports-pvc
+  namespace: monitoring
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: security-reports-viewer
+  namespace: monitoring
+specs:
+  selector:
+    app: security-reports-viewer
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: security-reports-viewer
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: security-reports-viewer
+  template:
+    metadata:
+      labels:
+        app: security-reports-viewer
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        resources:
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: report-volume
+          mountPath: /usr/share/nginx/html/reports
+          readOnly: true
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+      volumes:
+      - name: report-volume
+        persistentVolumeClaim:
+          claimName: security-reports-pvc
+      - name: nginx-config
+        configMap:
+          name: nginx-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: monitoring
+data:
+  default.conf: |
+    server {
+        listen 8080;
+        server_name _;
+        
+        location / {
+            root /usr/share/nginx/html;
+            autoindex on;
+            autoindex_format html;
+        }
+    }

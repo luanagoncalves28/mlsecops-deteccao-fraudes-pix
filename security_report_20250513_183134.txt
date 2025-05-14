@@ -1,0 +1,131 @@
+=====================================================
+MLSecOps - Relatório de Segurança Kubernetes
+Data: Ter 13 Mai 2025 18:31:34 -03
+Cluster: gke_mlsecpix-456600_southamerica-east1_mlsecpix-dev-gke
+=====================================================
+
+--------------------------------------------------
+PROBLEMA: Containers com privilégios elevados
+SEVERIDADE: CRÍTICO
+CONTAGEM:       16 ocorrência(s)
+
+DETALHES:
+anetd-9qwrv	kube-system	true	
+anetd-zjmtk	kube-system	true	
+efficiency-daemon-6m2vc	kube-system	true
+efficiency-daemon-wgkp9	kube-system	true
+filestore-node-p6d5j	kube-system		true		
+filestore-node-s6j6z	kube-system		true		
+gcsfusecsi-node-7vktv	kube-system	true		
+gcsfusecsi-node-lv7r9	kube-system	true		
+gke-metadata-server-h6vc5	kube-system	true
+gke-metadata-server-stjr2	kube-system	true
+netd-dwk7r	kube-system	true	true	
+netd-zzwcp	kube-system	true	true	
+parallelstore-csi-node-44tq9	kube-system	true	
+parallelstore-csi-node-sx6k2	kube-system	true	
+pdcsi-node-mkb9m	kube-system		true
+pdcsi-node-nqn9h	kube-system		true
+
+RECOMENDAÇÕES:
+Remova a configuração securityContext.privileged=true dos containers. Utilize o princípio de privilégio mínimo.
+--------------------------------------------------
+
+--------------------------------------------------
+PROBLEMA: Containers sem limites de recursos definidos
+SEVERIDADE: ALTO
+CONTAGEM:       10 ocorrência(s)
+
+DETALHES:
+antrea-controller-horizontal-autoscaler-8c875bffb-wlkf9	kube-system	Limites: 
+efficiency-daemon-6m2vc	kube-system	Limites: 
+efficiency-daemon-wgkp9	kube-system	Limites: 
+egress-nat-controller-5b8d8978c5-cpfd2	kube-system	Limites: 
+event-exporter-gke-54688c9cf7-lfhl7	kube-system	Limites: 	Limites: 
+ip-masq-agent-hkmxq	kube-system	Limites: 
+ip-masq-agent-tg9hd	kube-system	Limites: 
+konnectivity-agent-autoscaler-5c545f57df-24tvx	kube-system	Limites: 
+kube-dns-autoscaler-6b45f7c46d-zcntn	kube-system	Limites: 
+l7-default-backend-85dbfcb7db-zp8v8	kube-system	Limites: 
+
+RECOMENDAÇÕES:
+Configure limits.cpu e limits.memory para todos os containers para prevenir ataques de negação de serviço por consumo excessivo de recursos.
+--------------------------------------------------
+
+--------------------------------------------------
+PROBLEMA: Serviços expostos externamente
+SEVERIDADE: MÉDIO
+CONTAGEM:        2 ocorrência(s)
+
+DETALHES:
+default-http-backend	kube-system	NodePort
+grafana	monitoring	LoadBalancer
+
+RECOMENDAÇÕES:
+Avalie se estes serviços realmente precisam ser expostos externamente. Considere usar um Ingress Controller ou API Gateway para centralizar o acesso.
+--------------------------------------------------
+
+--------------------------------------------------
+PROBLEMA: Ausência de Network Policies
+SEVERIDADE: MÉDIO
+CONTAGEM:        1 ocorrência(s)
+
+DETALHES:
+Namespaces sem Network Policies: default gke-gmp-system gke-managed-cim gke-managed-filestorecsi gke-managed-system gke-managed-volumepopulator gmp-public ml monitoring 
+
+RECOMENDAÇÕES:
+Implemente Network Policies para restringir a comunicação entre pods apenas ao necessário, seguindo o princípio de privilégio mínimo.
+--------------------------------------------------
+
+--------------------------------------------------
+PROBLEMA: Role Bindings com permissões administrativas amplas
+SEVERIDADE: ALTO
+CONTAGEM:        2 ocorrência(s)
+
+DETALHES:
+cluster-admin	cluster-admin	system:masters
+kubelet-cluster-admin	system:node	
+
+RECOMENDAÇÕES:
+Restrinja os Role Bindings para cluster-admin apenas aos usuários que realmente necessitam. Crie roles mais granulares com base no princípio de privilégio mínimo.
+--------------------------------------------------
+
+--------------------------------------------------
+PROBLEMA: Imagens de fontes não oficiais
+SEVERIDADE: MÉDIO
+CONTAGEM:        5 ocorrência(s)
+
+DETALHES:
+
+tmp-shell	default	alpine 
+grafana-689f56884c-cc8bq	monitoring	grafana/grafana:10.0.3 
+ml-metrics-exporter-8c9dd78c-wmsqk	monitoring	python:3.10-slim 
+prometheus-7d6799bcdc-96c9m	monitoring	prom/prometheus:v2.45.0 
+
+RECOMENDAÇÕES:
+Utilize apenas imagens de registries confiáveis. Considere implementar uma solução de escaneamento de vulnerabilidades como Trivy para verificar as imagens antes da implantação.
+--------------------------------------------------
+
+--------------------------------------------------
+PROBLEMA: Pods usando ServiceAccount padrão
+SEVERIDADE: MÉDIO
+CONTAGEM:        6 ocorrência(s)
+
+DETALHES:
+tmp-shell	default	ServiceAccount: default
+anetd-9qwrv	kube-system	ServiceAccount: default
+anetd-zjmtk	kube-system	ServiceAccount: default
+l7-default-backend-85dbfcb7db-zp8v8	kube-system	ServiceAccount: default
+grafana-689f56884c-cc8bq	monitoring	ServiceAccount: default
+ml-metrics-exporter-8c9dd78c-wmsqk	monitoring	ServiceAccount: default
+
+RECOMENDAÇÕES:
+Crie ServiceAccounts dedicados para cada workload com permissões mínimas necessárias em vez de usar o ServiceAccount padrão.
+--------------------------------------------------
+===========================================
+RESUMO DA VERIFICAÇÃO DE SEGURANÇA
+Total de problemas encontrados: 7
+Problemas críticos: 1
+Problemas de alta severidade: 2
+===========================================
+RESULTADO: FALHA - Problemas críticos encontrados

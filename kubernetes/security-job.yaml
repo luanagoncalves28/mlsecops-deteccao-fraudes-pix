@@ -1,0 +1,115 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: k8s-security-scan
+  namespace: monitoring
+spec:
+  schedule: "0 2 * * *"  # Executa diariamente às 2h da manhã
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: security-scanner
+        spec:
+          containers:
+          - name: security-scanner
+            image: bitnami/kubectl:latest
+            resources:
+              limits:
+                cpu: "500m"
+                memory: "512Mi"
+              requests:
+                cpu: "100m"
+                memory: "256Mi"
+            command:
+            - /bin/bash
+            - -c
+            - |
+              # Executar verificação de segurança do Kubernetes
+              echo "Iniciando verificação de segurança do Kubernetes..."
+              
+              # Verificar pods com privilégios elevados
+              echo "Verificando pods com privilégios elevados..."
+              PRIVILEGED_PODS=$(kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{"\n"}{.metadata.name}{"\t"}{.metadata.namespace}{range .spec.containers[*]}{"\t"}{.securityContext.privileged}{end}{end}' | grep -E "true" | wc -l || echo "0")
+              
+              # Verificar pods sem limites de recursos
+              echo "Verificando pods sem limites de recursos..."
+              PODS_WITHOUT_LIMITS=$(kubectl get pods --all-namespaces -o jsonpath='{range .items[*]}{"\n"}{.metadata.name}{"\t"}{.metadata.namespace}{range .spec.containers[*]}{"\t"}{"Limites: "}{.resources.limits}{end}{end}' | grep -E "Limites: null|Limites: <no value>|Limites: $" | wc -l || echo "0")
+              
+              # Verificar serviços expostos externamente
+              echo "Verificando serviços expostos externamente..."
+              EXPOSED_SERVICES=$(kubectl get svc --all-namespaces -o jsonpath='{range .items[*]}{"\n"}{.metadata.name}{"\t"}{.metadata.namespace}{"\t"}{.spec.type}{end}' | grep -E "LoadBalancer|NodePort" | wc -l || echo "0")
+              
+              # Verificar Network Policies
+              echo "Verificando Network Policies..."
+              NAMESPACES=$(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}')
+              NAMESPACES_WITHOUT_NETPOL=0
+              for ns in $NAMESPACES; do
+                if [[ "$ns" != "kube-system" && "$ns" != "kube-public" && "$ns" != "kube-node-lease" ]]; then
+                  NETPOL_COUNT=$(kubectl get networkpolicy -n $ns -o jsonpath='{.items[*].metadata.name}' 2>/dev/null | wc -w || echo "0")
+                  if [[ "$NETPOL_COUNT" -eq 0 ]]; then
+                    NAMESPACES_WITHOUT_NETPOL=$((NAMESPACES_WITHOUT_NETPOL + 1))
+                  fi
+                fi
+              done
+              
+              # Verificar Role Bindings com permissões administrativas amplas
+              echo "Verificando Role Bindings com permissões amplas..."
+              BROAD_BINDINGS=$(kubectl get clusterrolebinding -o jsonpath='{range .items[*]}{"\n"}{.metadata.name}{"\t"}{.roleRef.name}{"\t"}{.subjects[*].name}{end}' | grep -E "cluster-admin" | wc -l || echo "0")
+              
+              # Verificar Pods usando ServiceAccount padrão
+              echo "Verificando uso de ServiceAccounts padrão..."
+              DEFAULT_SA_PODS=$(kubectl get pods -A -o jsonpath='{range .items[*]}{"\n"}{.metadata.name}{"\t"}{.metadata.namespace}{"\t"}{"ServiceAccount: "}{.spec.serviceAccountName}{end}' | grep -E "ServiceAccount: default" | wc -l || echo "0")
+              
+              # Contar problemas críticos e de alta severidade
+              CRITICAL_ISSUES=$PRIVILEGED_PODS
+              HIGH_ISSUES=$((PODS_WITHOUT_LIMITS + BROAD_BINDINGS))
+              
+              # Gerar métricas para o Prometheus
+              cat <<EOF > /tmp/security-metrics.prom
+              # HELP security_privileged_pods Number of pods running with privileged security context
+              # TYPE security_privileged_pods gauge
+              security_privileged_pods $PRIVILEGED_PODS
+              
+              # HELP security_pods_without_limits Number of pods without resource limits
+              # TYPE security_pods_without_limits gauge
+              security_pods_without_limits $PODS_WITHOUT_LIMITS
+              
+              # HELP security_exposed_services Number of services exposed externally
+              # TYPE security_exposed_services gauge
+              security_exposed_services $EXPOSED_SERVICES
+              
+              # HELP security_missing_network_policies Number of namespaces without network policies
+              # TYPE security_missing_network_policies gauge
+              security_missing_network_policies $NAMESPACES_WITHOUT_NETPOL
+              
+              # HELP security_broad_role_bindings Number of role bindings with broad admin permissions
+              # TYPE security_broad_role_bindings gauge
+              security_broad_role_bindings $BROAD_BINDINGS
+              
+              # HELP security_default_sa_pods Number of pods using default service account
+              # TYPE security_default_sa_pods gauge
+              security_default_sa_pods $DEFAULT_SA_PODS
+              
+              # HELP security_critical_issues Number of critical security issues
+              # TYPE security_critical_issues gauge
+              security_critical_issues $CRITICAL_ISSUES
+              
+              # HELP security_high_issues Number of high severity security issues
+              # TYPE security_high_issues gauge
+              security_high_issues $HIGH_ISSUES
+              EOF
+              
+              # Enviar métricas para o Prometheus
+              if [ -f /tmp/security-metrics.prom ]; then
+                cat /tmp/security-metrics.prom
+                echo "Métricas de segurança geradas com sucesso"
+              else
+                echo "Erro ao gerar métricas de segurança"
+              fi
+              
+              # Resultado do scan
+              echo "Verificação de segurança concluída."
+          restartPolicy: OnFailure

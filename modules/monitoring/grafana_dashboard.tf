@@ -572,7 +572,9 @@ resource "kubernetes_config_map" "grafana_dashboards" {
       "uid": "mlsecops-monitoring",
       "version": 1,
       "weekStart": ""
-    })
+    }),
+    
+    "security-dashboard.json" = file("${path.module}/dashboards/security-dashboard.json")
   }
 }
 
