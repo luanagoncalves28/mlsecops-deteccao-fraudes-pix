@@ -187,7 +187,8 @@ resource "kubernetes_deployment" "prometheus" {
           args  = [
             "--config.file=/etc/prometheus/prometheus.yml",
             "--storage.tsdb.retention.time=15d",
-            "--web.enable-lifecycle"
+            "--web.enable-lifecycle",
+            "--alertmanager.url=http://alertmanager:9093"
           ]
 
           port {

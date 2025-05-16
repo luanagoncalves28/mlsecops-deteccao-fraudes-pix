@@ -574,6 +574,103 @@ resource "kubernetes_config_map" "grafana_dashboards" {
       "weekStart": ""
     }),
     
+    "mlops-model-health.json" = jsonencode({
+      "title": "ML Model Health",
+      "uid": "ml-model-health",
+      "panels": [
+        {
+          "title": "Model Performance",
+          "type": "gauge",
+          "gridPos": {"h": 8, "w": 8, "x": 0, "y": 0},
+          "targets": [
+            {"expr": "model_precision{model_version=\"1.0\", model_type=\"xgboost\"}"},
+            {"expr": "model_recall{model_version=\"1.0\", model_type=\"xgboost\"}"},
+            {"expr": "model_f1_score{model_version=\"1.0\", model_type=\"xgboost\"}"}
+          ]
+        },
+        {
+          "title": "Feature Stability",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 16, "x": 8, "y": 0},
+          "targets": [
+            {"expr": "model_drift_score{feature_set=\"base\", model_version=\"1.0\"}"}
+          ]
+        },
+        {
+          "title": "Model Freshness",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 8, "x": 0, "y": 8},
+          "targets": [
+            {"expr": "uptime / 86400"}
+          ]
+        }
+      ]
+    }),
+    
+    "mlsecops-security.json" = jsonencode({
+      "title": "ML Security",
+      "uid": "ml-security",
+      "panels": [
+        {
+          "title": "Security Events",
+          "type": "stat",
+          "gridPos": {"h": 6, "w": 8, "x": 0, "y": 0},
+          "targets": [
+            {"expr": "sum(security_events_total) by (severity)"}
+          ]
+        },
+        {
+          "title": "Model Explainability",
+          "type": "gauge",
+          "gridPos": {"h": 8, "w": 8, "x": 8, "y": 0},
+          "targets": [
+            {"expr": "model_explainability_score{model_version=\"1.0\", model_type=\"xgboost\"}"}
+          ]
+        },
+        {
+          "title": "Data Validation Errors",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 16, "x": 0, "y": 8},
+          "targets": [
+            {"expr": "sum(rate(data_validation_errors_total[5m])) by (error_type)"}
+          ]
+        }
+      ]
+    }),
+    
+    "regulatory-compliance.json" = jsonencode({
+      "title": "Regulatory Compliance",
+      "uid": "ml-compliance",
+      "panels": [
+        {
+          "title": "Compliance Indicators",
+          "type": "stat",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+          "targets": [
+            {"expr": "data_retention_compliance"},
+            {"expr": "audit_log_integrity"}
+          ]
+        },
+        {
+          "title": "Model Explainability",
+          "type": "gauge",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+          "targets": [
+            {"expr": "model_explainability_score{model_version=\"1.0\", model_type=\"xgboost\"}"}
+          ]
+        },
+        {
+          "title": "DICT Integration",
+          "type": "stat",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+          "targets": [
+            {"expr": "dict_integration_status{operation_type=\"query\"}"},
+            {"expr": "dict_integration_status{operation_type=\"update\"}"}
+          ]
+        }
+      ]
+    }),
+    
     "security-dashboard.json" = file("${path.module}/dashboards/security-dashboard.json")
   }
 }
